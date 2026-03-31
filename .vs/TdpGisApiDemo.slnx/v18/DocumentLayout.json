@@ -1,0 +1,189 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{5AA5BEED-EDF9-43BE-A57E-0AF7BB2CCF52}|TdpGis.Api\\TdpGis.Api.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5AA5BEED-EDF9-43BE-A57E-0AF7BB2CCF52}|TdpGis.Api\\TdpGis.Api.csproj|solutionrelative:tdpgis.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.applicationdb\\database\\gisappdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|solutionrelative:tdpgis.applicationdb\\database\\gisappdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.applicationdb\\configurations\\propertymappingconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|solutionrelative:tdpgis.applicationdb\\configurations\\propertymappingconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.applicationdb\\configurations\\datasourcesettingconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|solutionrelative:tdpgis.applicationdb\\configurations\\datasourcesettingconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.applicationdb\\configurations\\gisconnectionconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A038E268-133B-4736-9BED-59BEA93735C3}|TdpGis.ApplicationDb\\TdpGis.ApplicationDb.csproj|solutionrelative:tdpgis.applicationdb\\configurations\\gisconnectionconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{55915D49-8DB5-612F-F791-45A4B3DDED3F}|TdpGis.Models\\TdpGis.Models.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.models\\gisconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{55915D49-8DB5-612F-F791-45A4B3DDED3F}|TdpGis.Models\\TdpGis.Models.csproj|solutionrelative:tdpgis.models\\gisconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E814BBEB-D6D4-F82A-89B2-6E8ECB0698A7}|TdpGis.Application\\TdpGis.Application.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.application\\appmodels\\gisconnectiondto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E814BBEB-D6D4-F82A-89B2-6E8ECB0698A7}|TdpGis.Application\\TdpGis.Application.csproj|solutionrelative:tdpgis.application\\appmodels\\gisconnectiondto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E814BBEB-D6D4-F82A-89B2-6E8ECB0698A7}|TdpGis.Application\\TdpGis.Application.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.application\\databaseservice\\igisdbservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E814BBEB-D6D4-F82A-89B2-6E8ECB0698A7}|TdpGis.Application\\TdpGis.Application.csproj|solutionrelative:tdpgis.application\\databaseservice\\igisdbservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E814BBEB-D6D4-F82A-89B2-6E8ECB0698A7}|TdpGis.Application\\TdpGis.Application.csproj|f:\\workspace\\git\\_demo\\tdpgisapidemo\\tdpgis.application\\appmodels\\gisappmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E814BBEB-D6D4-F82A-89B2-6E8ECB0698A7}|TdpGis.Application\\TdpGis.Application.csproj|solutionrelative:tdpgis.application\\appmodels\\gisappmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:133:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Api\\Program.cs",
+              "RelativeDocumentMoniker": "TdpGis.Api\\Program.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Api\\Program.cs",
+              "RelativeToolTip": "TdpGis.Api\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T07:53:46.499Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "GisConnectionConfiguration.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Configurations\\GisConnectionConfiguration.cs",
+              "RelativeDocumentMoniker": "TdpGis.ApplicationDb\\Configurations\\GisConnectionConfiguration.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Configurations\\GisConnectionConfiguration.cs",
+              "RelativeToolTip": "TdpGis.ApplicationDb\\Configurations\\GisConnectionConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T07:43:51.892Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "DataSourceSettingConfiguration.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Configurations\\DataSourceSettingConfiguration.cs",
+              "RelativeDocumentMoniker": "TdpGis.ApplicationDb\\Configurations\\DataSourceSettingConfiguration.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Configurations\\DataSourceSettingConfiguration.cs",
+              "RelativeToolTip": "TdpGis.ApplicationDb\\Configurations\\DataSourceSettingConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T07:42:57.032Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PropertyMappingConfiguration.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Configurations\\PropertyMappingConfiguration.cs",
+              "RelativeDocumentMoniker": "TdpGis.ApplicationDb\\Configurations\\PropertyMappingConfiguration.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Configurations\\PropertyMappingConfiguration.cs",
+              "RelativeToolTip": "TdpGis.ApplicationDb\\Configurations\\PropertyMappingConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T07:39:04.171Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "GisAppDbContext.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Database\\GisAppDbContext.cs",
+              "RelativeDocumentMoniker": "TdpGis.ApplicationDb\\Database\\GisAppDbContext.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.ApplicationDb\\Database\\GisAppDbContext.cs",
+              "RelativeToolTip": "TdpGis.ApplicationDb\\Database\\GisAppDbContext.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAABcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T07:38:45.486Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "IGisDbService.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Application\\DatabaseService\\IGisDbService.cs",
+              "RelativeDocumentMoniker": "TdpGis.Application\\DatabaseService\\IGisDbService.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Application\\DatabaseService\\IGisDbService.cs",
+              "RelativeToolTip": "TdpGis.Application\\DatabaseService\\IGisDbService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T07:02:16.163Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "GisConnection.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Models\\GisConnection.cs",
+              "RelativeDocumentMoniker": "TdpGis.Models\\GisConnection.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Models\\GisConnection.cs",
+              "RelativeToolTip": "TdpGis.Models\\GisConnection.cs",
+              "ViewState": "AgIAAA0AAAAAAAAAAAAcwBwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-30T23:26:36.952Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "GisConnectionDto.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Application\\AppModels\\GisConnectionDto.cs",
+              "RelativeDocumentMoniker": "TdpGis.Application\\AppModels\\GisConnectionDto.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Application\\AppModels\\GisConnectionDto.cs",
+              "RelativeToolTip": "TdpGis.Application\\AppModels\\GisConnectionDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T00:21:51.737Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "GisAppModel.cs",
+              "DocumentMoniker": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Application\\AppModels\\GisAppModel.cs",
+              "RelativeDocumentMoniker": "TdpGis.Application\\AppModels\\GisAppModel.cs",
+              "ToolTip": "F:\\Workspace\\Git\\_Demo\\TdpGisApiDemo\\TdpGis.Application\\AppModels\\GisAppModel.cs",
+              "RelativeToolTip": "TdpGis.Application\\AppModels\\GisAppModel.cs",
+              "ViewState": "AgIAAAoAAAAAAAAAAAAgwB4AAAA8AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-31T00:15:20.985Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
