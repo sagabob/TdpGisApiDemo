@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="TdpGis.Api/TdpGis.Api.csproj" Id="5aa5beed-edf9-43be-a57e-0af7bb2ccf52" />
-    <Project Path="TdpGis.Application/TdpGis.Application.csproj" />
-    <Project Path="TdpGis.ApplicationDb/TdpGis.ApplicationDb.csproj" Id="a038e268-133b-4736-9bed-59bea93735c3" />
-    <Project Path="TdpGis.Models/TdpGis.Models.csproj" />
-  </Folder>
-</Solution>
