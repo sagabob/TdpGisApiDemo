@@ -78,7 +78,7 @@ public class GisWorkspaceAccessToken
     public required string Name { get; set; }
 
     /// <summary>
-    /// Opaque secret (e.g. Base64Url random bytes); unique when used for lookup.
+    ///     Opaque secret (e.g. Base64Url random bytes); unique when used for lookup.
     /// </summary>
     public required string AccessToken { get; set; }
 
@@ -90,4 +90,3 @@ public class GisWorkspaceAccessToken
 
     public required GisWorkspace GisWorkspace { get; set; }
 }
-

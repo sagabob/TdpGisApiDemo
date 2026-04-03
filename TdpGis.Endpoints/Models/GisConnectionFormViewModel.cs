@@ -9,33 +9,21 @@ public class GisConnectionFormViewModel
     [Display(Name = "Saved MongoDB Connection")]
     public Guid? DataSourceId { get; set; }
 
-    [Required]
-    [StringLength(100)]
-    public string Name { get; set; } = string.Empty;
+    [Required] [StringLength(100)] public string Name { get; set; } = string.Empty;
 
-    [StringLength(500)]
-    public string Description { get; set; } = string.Empty;
+    [StringLength(500)] public string Description { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
-    public string Entity { get; set; } = string.Empty;
+    [Required] [StringLength(100)] public string Entity { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
-    public string EntityLabel { get; set; } = string.Empty;
+    [Required] [StringLength(100)] public string EntityLabel { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
-    public string QueryField { get; set; } = string.Empty;
+    [Required] [StringLength(100)] public string QueryField { get; set; } = string.Empty;
 
-    [Required]
-    public GeometryType GeometryType { get; set; } = GeometryType.MultiPolygon;
+    [Required] public GeometryType GeometryType { get; set; } = GeometryType.MultiPolygon;
 
-    [Display(Name = "Workspace")]
-    public Guid? GisWorkspaceId { get; set; }
+    [Display(Name = "Workspace")] public Guid? GisWorkspaceId { get; set; }
 
-    [Display(Name = "Property Mappings")]
-    public string PropertyMappingsText { get; set; } = string.Empty;
+    [Display(Name = "Property Mappings")] public string PropertyMappingsText { get; set; } = string.Empty;
 }
 
 public class MongoConnectionFormViewModel
@@ -75,21 +63,16 @@ public class AccessTokenFormViewModel
     [Display(Name = "Name")]
     public string Name { get; set; } = string.Empty;
 
-    [Required]
-    [Display(Name = "Expires")]
-    public DateTime ExpiredDateTime { get; set; } = DateTime.UtcNow.AddDays(90);
+    [Required] [Display(Name = "Expires")] public DateTime ExpiredDateTime { get; set; } = DateTime.UtcNow.AddDays(90);
 
-    [Display(Name = "Active")]
-    public bool IsActive { get; set; } = true;
+    [Display(Name = "Active")] public bool IsActive { get; set; } = true;
 
-    [Display(Name = "Public")]
-    public bool IsPublic { get; set; }
+    [Display(Name = "Public")] public bool IsPublic { get; set; }
 }
 
 public class UpdateWorkspaceAccessTokenFormViewModel
 {
-    [Required]
-    public Guid TokenId { get; set; }
+    [Required] public Guid TokenId { get; set; }
 
     [Required(ErrorMessage = "Select a workspace.")]
     [Display(Name = "Workspace")]
@@ -100,9 +83,7 @@ public class UpdateWorkspaceAccessTokenFormViewModel
     [Display(Name = "Name")]
     public string Name { get; set; } = string.Empty;
 
-    [Required]
-    [Display(Name = "Expires")]
-    public DateTime ExpiredDateTime { get; set; }
+    [Required] [Display(Name = "Expires")] public DateTime ExpiredDateTime { get; set; }
 
     public bool IsActive { get; set; }
 

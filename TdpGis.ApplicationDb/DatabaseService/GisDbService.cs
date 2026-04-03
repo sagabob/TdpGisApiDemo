@@ -9,7 +9,7 @@ namespace TdpGis.ApplicationDb.DatabaseService;
 
 public class GisDbService(GisAppDbContext dbContext) : IGisDbService
 {
-    public Dictionary<string, GisConnection> QueryInstances => 
+    public Dictionary<string, GisConnection> QueryInstances =>
         dbContext.GisConnections
             .AsNoTracking()
             .Include(x => x.PropertyMappings)
@@ -53,7 +53,8 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
             .ToList();
     }
 
-    public async Task<GisConnection> CreateConnectionAsync(GisConnection connection, CancellationToken cancellationToken = default)
+    public async Task<GisConnection> CreateConnectionAsync(GisConnection connection,
+        CancellationToken cancellationToken = default)
     {
         // Reuse existing DataSourceSetting row instead of inserting duplicate key.
         dbContext.Attach(connection.DataSource);
@@ -78,15 +79,13 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
             .FirstOrDefault(x => x.Id == id);
     }
 
-    public async Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString, CancellationToken cancellationToken = default)
+    public async Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString,
+        CancellationToken cancellationToken = default)
     {
         var normalized = connectionString.Trim();
         var existing = dbContext.DataSourceSettings
             .FirstOrDefault(x => x.DatabaseType == SourceType.Mongodb && x.ConnectionString == normalized);
-        if (existing is not null)
-        {
-            return existing;
-        }
+        if (existing is not null) return existing;
 
         var ds = new DataSourceSetting
         {
@@ -130,13 +129,11 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
         return workspace;
     }
 
-    public async Task<GisWorkspace?> UpdateWorkspaceAsync(Guid id, string name, CancellationToken cancellationToken = default)
+    public async Task<GisWorkspace?> UpdateWorkspaceAsync(Guid id, string name,
+        CancellationToken cancellationToken = default)
     {
         var workspace = await dbContext.GisWorkspaces.FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
-        if (workspace is null)
-        {
-            return null;
-        }
+        if (workspace is null) return null;
 
         workspace.Name = name.Trim();
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -152,10 +149,7 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
         CancellationToken cancellationToken = default)
     {
         var workspace = await dbContext.GisWorkspaces.FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
-        if (workspace is null)
-        {
-            throw new InvalidOperationException("Workspace was not found.");
-        }
+        if (workspace is null) throw new InvalidOperationException("Workspace was not found.");
 
         var token = new GisWorkspaceAccessToken
         {
@@ -185,16 +179,10 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
     {
         var token = await dbContext.GisWorkspaceAccessTokens
             .FirstOrDefaultAsync(t => t.Id == tokenId, cancellationToken);
-        if (token is null)
-        {
-            return null;
-        }
+        if (token is null) return null;
 
         var workspaceExists = await dbContext.GisWorkspaces.AnyAsync(w => w.Id == gisWorkspaceId, cancellationToken);
-        if (!workspaceExists)
-        {
-            throw new InvalidOperationException("Workspace was not found.");
-        }
+        if (!workspaceExists) throw new InvalidOperationException("Workspace was not found.");
 
         token.GisWorkspaceId = gisWorkspaceId;
         token.Name = name.Trim();
@@ -210,25 +198,16 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
         IReadOnlyList<Guid> connectionIds,
         CancellationToken cancellationToken = default)
     {
-        if (connectionIds.Count == 0)
-        {
-            return 0;
-        }
+        if (connectionIds.Count == 0) return 0;
 
         var workspaceExists = await dbContext.GisWorkspaces.AnyAsync(w => w.Id == workspaceId, cancellationToken);
-        if (!workspaceExists)
-        {
-            throw new InvalidOperationException("Workspace was not found.");
-        }
+        if (!workspaceExists) throw new InvalidOperationException("Workspace was not found.");
 
         var connections = await dbContext.GisConnections
             .Where(c => connectionIds.Contains(c.Id))
             .ToListAsync(cancellationToken);
 
-        foreach (var conn in connections)
-        {
-            conn.GisWorkspaceId = workspaceId;
-        }
+        foreach (var conn in connections) conn.GisWorkspaceId = workspaceId;
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return connections.Count;

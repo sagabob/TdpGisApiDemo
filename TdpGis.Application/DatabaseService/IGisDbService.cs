@@ -19,7 +19,8 @@ public interface IGisDbService
 
     DataSourceSetting? GetDataSourceById(Guid id);
 
-    Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString, CancellationToken cancellationToken = default);
+    Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString,
+        CancellationToken cancellationToken = default);
 
     List<GisWorkspace> GetAllWorkspaces();
 
