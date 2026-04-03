@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
@@ -87,12 +88,23 @@ namespace TdpGis.Endpoints.Controllers
                 ModelState.AddModelError(nameof(model.PropertyMappingsText), "At least one property mapping is required.");
             }
 
+            if (model.GisWorkspaceId.HasValue && model.GisWorkspaceId != Guid.Empty)
+            {
+                var ws = gisDbService.GetWorkspaceById(model.GisWorkspaceId.Value);
+                if (ws is null)
+                {
+                    ModelState.AddModelError(nameof(model.GisWorkspaceId), "Selected workspace was not found.");
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 var pageModel = BuildPageModel();
                 pageModel.Form = model;
                 return View("Index", pageModel);
             }
+
+            Guid? workspaceFk = model.GisWorkspaceId is { } wid && wid != Guid.Empty ? wid : null;
 
             var connection = new GisConnection
             {
@@ -104,11 +116,165 @@ namespace TdpGis.Endpoints.Controllers
                 QueryField = model.QueryField.Trim(),
                 GeometryType = model.GeometryType,
                 PropertyMappings = propertyMappings,
+                GisWorkspaceId = workspaceFk,
+                GisWorkspace = null,
                 DataSource = dataSource!
             };
 
             await gisDbService.CreateConnectionAsync(connection, cancellationToken);
             TempData["SuccessMessage"] = $"Created query entity '{connection.Name}'.";
+            return RedirectToAction(nameof(Configuration));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignEntitiesToWorkspace(
+            [Bind(Prefix = "AssignEntitiesForm")] AssignEntitiesWorkspaceFormViewModel model,
+            CancellationToken cancellationToken)
+        {
+            var ids = model.SelectedConnectionIds ?? [];
+            if (ids.Count == 0)
+            {
+                ModelState.AddModelError(
+                    nameof(model.SelectedConnectionIds),
+                    "Select at least one GIS entity to add to the workspace.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var pageModel = BuildPageModel();
+                pageModel.AssignEntitiesForm = model;
+                return View("Index", pageModel);
+            }
+
+            try
+            {
+                var updated = await gisDbService.SetConnectionsWorkspaceAsync(model.WorkspaceId, ids, cancellationToken);
+                TempData["SuccessMessage"] = updated == 1
+                    ? "Assigned 1 GIS entity to the workspace."
+                    : $"Assigned {updated} GIS entities to the workspace.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.WorkspaceId), ex.Message);
+                var pageModel = BuildPageModel();
+                pageModel.AssignEntitiesForm = model;
+                return View("Index", pageModel);
+            }
+
+            return RedirectToAction(nameof(Configuration));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveWorkspace([Bind(Prefix = "WorkspaceForm")] WorkspaceFormViewModel model, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                var pageModel = BuildPageModel();
+                pageModel.WorkspaceForm = model;
+                return View("Index", pageModel);
+            }
+
+            var name = model.Name.Trim();
+            if (!model.WorkspaceId.HasValue || model.WorkspaceId == Guid.Empty)
+            {
+                await gisDbService.CreateWorkspaceAsync(name, cancellationToken);
+                TempData["SuccessMessage"] = $"Created workspace '{name}'.";
+            }
+            else
+            {
+                var updated = await gisDbService.UpdateWorkspaceAsync(model.WorkspaceId.Value, name, cancellationToken);
+                if (updated is null)
+                {
+                    ModelState.AddModelError(nameof(model.WorkspaceId), "Workspace was not found.");
+                    var pageModel = BuildPageModel();
+                    pageModel.WorkspaceForm = model;
+                    return View("Index", pageModel);
+                }
+
+                TempData["SuccessMessage"] = $"Updated workspace '{updated.Name}'.";
+            }
+
+            return RedirectToAction(nameof(Configuration));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateWorkspaceAccessToken([Bind(Prefix = "AccessTokenForm")] AccessTokenFormViewModel model, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                var pageModel = BuildPageModel();
+                pageModel.AccessTokenForm = model;
+                return View("Index", pageModel);
+            }
+
+            try
+            {
+                var token = await gisDbService.CreateWorkspaceAccessTokenAsync(
+                    model.WorkspaceId,
+                    model.Name,
+                    model.ExpiredDateTime,
+                    model.IsActive,
+                    model.IsPublic,
+                    cancellationToken);
+                TempData["SuccessMessage"] = "Access token created. Copy the secret below; it cannot be retrieved again.";
+                TempData["CreatedAccessTokenPlain"] = token.AccessToken;
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.WorkspaceId), ex.Message);
+                var pageModel = BuildPageModel();
+                pageModel.AccessTokenForm = model;
+                return View("Index", pageModel);
+            }
+
+            return RedirectToAction(nameof(Configuration));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateWorkspaceAccessToken(
+            [Bind(Prefix = "UpdateToken")] UpdateWorkspaceAccessTokenFormViewModel model,
+            CancellationToken cancellationToken)
+        {
+            ApplyUpdateTokenCheckboxesFromForm(Request.Form, model);
+
+            if (!ModelState.IsValid)
+            {
+                var pageModel = BuildPageModel();
+                pageModel.UpdateTokenForm = model;
+                return View("Index", pageModel);
+            }
+
+            try
+            {
+                var updated = await gisDbService.UpdateWorkspaceAccessTokenAsync(
+                    model.TokenId,
+                    model.GisWorkspaceId,
+                    model.Name,
+                    model.ExpiredDateTime,
+                    model.IsActive,
+                    model.IsPublic,
+                    cancellationToken);
+                if (updated is null)
+                {
+                    ModelState.AddModelError(string.Empty, "Access token was not found.");
+                    var pageModel = BuildPageModel();
+                    pageModel.UpdateTokenForm = model;
+                    return View("Index", pageModel);
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.GisWorkspaceId), ex.Message);
+                var pageModel = BuildPageModel();
+                pageModel.UpdateTokenForm = model;
+                return View("Index", pageModel);
+            }
+
+            TempData["SuccessMessage"] = "Access token settings updated.";
             return RedirectToAction(nameof(Configuration));
         }
 
@@ -224,7 +390,8 @@ namespace TdpGis.Endpoints.Controllers
             return new GisConnectionPageViewModel
             {
                 ExistingConnections = gisDbService.GetAllConnections(),
-                SavedMongoConnections = gisDbService.GetMongoDataSources()
+                SavedMongoConnections = gisDbService.GetMongoDataSources(),
+                Workspaces = gisDbService.GetAllWorkspaces()
             };
         }
 
@@ -299,6 +466,26 @@ namespace TdpGis.Endpoints.Controllers
             }
 
             return (true, string.Empty);
+        }
+
+        private static void ApplyUpdateTokenCheckboxesFromForm(IFormCollection form, UpdateWorkspaceAccessTokenFormViewModel model)
+        {
+            model.IsActive = FormHasCheckboxTrue(form, "UpdateToken.IsActive");
+            model.IsPublic = FormHasCheckboxTrue(form, "UpdateToken.IsPublic");
+        }
+
+        private static bool FormHasCheckboxTrue(IFormCollection form, string key)
+        {
+            var values = form[key];
+            for (var i = 0; i < values.Count; i++)
+            {
+                if (string.Equals(values[i], "true", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public sealed class MongoValidationRequest

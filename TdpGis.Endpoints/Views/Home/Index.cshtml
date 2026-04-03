@@ -1,6 +1,9 @@
 @model TdpGis.Endpoints.Models.GisConnectionPageViewModel
+@using System.Globalization
 @{
     ViewData["Title"] = "Query Configuration";
+    var configSuccessMessage = TempData["SuccessMessage"] as string;
+    var configNewAccessTokenPlain = TempData["CreatedAccessTokenPlain"] as string;
 
     static string MaskConnectionString(string value)
     {
@@ -36,20 +39,23 @@
 
 <div class="row g-4">
     <div class="col-lg-8">
-        <h1 class="h3">MongoDB + GIS Configuration</h1>
-        <p class="text-muted">Tab 1 saves MongoDB connections. Tab 2 creates GIS entities from saved connections.</p>
+        <h1 class="h3">GIS Configuration</h1>
+        <p class="text-muted">MongoDB connections, GIS entities, and workspaces with access tokens.</p>
 
-        @if (TempData["SuccessMessage"] is string message)
+        @if (!string.IsNullOrEmpty(configSuccessMessage) && string.IsNullOrEmpty(configNewAccessTokenPlain))
         {
-            <div class="alert alert-success" role="alert">@message</div>
+            <div class="alert alert-success" role="alert">@configSuccessMessage</div>
         }
 
         <ul class="nav nav-tabs mb-3" id="configTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="mongo-tab" data-bs-toggle="tab" data-bs-target="#mongo-tab-pane" type="button" role="tab">1. Save MongoDB Connection</button>
+                <button class="nav-link active" id="mongo-tab" data-bs-toggle="tab" data-bs-target="#mongo-tab-pane" type="button" role="tab">1. MongoDB</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="gis-tab" data-bs-toggle="tab" data-bs-target="#gis-tab-pane" type="button" role="tab">2. Create GIS Connection</button>
+                <button class="nav-link" id="gis-tab" data-bs-toggle="tab" data-bs-target="#gis-tab-pane" type="button" role="tab">2. GIS connection</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="workspace-tab" data-bs-toggle="tab" data-bs-target="#workspace-tab-pane" type="button" role="tab">3. Workspace &amp; token</button>
             </li>
         </ul>
 
@@ -164,6 +170,19 @@
                     </div>
 
                     <div class="mb-3">
+                        <label asp-for="Form.GisWorkspaceId" class="form-label"></label>
+                        <select asp-for="Form.GisWorkspaceId" class="form-select">
+                            <option value="">— None —</option>
+                            @foreach (var w in Model.Workspaces)
+                            {
+                                <option value="@w.Id">@w.Name</option>
+                            }
+                        </select>
+                        <small class="text-muted">Optional: attach this GIS entity to a workspace when saving.</small>
+                        <span asp-validation-for="Form.GisWorkspaceId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Property Mappings</label>
                         <div class="row g-2">
                             <div class="col-md-4">
@@ -209,6 +228,264 @@
                     <button type="submit" class="btn btn-primary">Save GIS Connection</button>
                 </form>
             </div>
+
+            <div class="tab-pane fade" id="workspace-tab-pane" role="tabpanel" aria-labelledby="workspace-tab" data-force-workspace-tab="@(!string.IsNullOrEmpty(configNewAccessTokenPlain) ? "true" : null)">
+                @if (!string.IsNullOrEmpty(configNewAccessTokenPlain))
+                {
+                    @if (!string.IsNullOrEmpty(configSuccessMessage))
+                    {
+                        <div class="alert alert-success" role="alert">@configSuccessMessage</div>
+                    }
+                    <div class="alert alert-warning" role="alert">
+                        <strong>New access token (copy now):</strong>
+                        <pre class="mb-0 mt-2 p-2 bg-white border rounded small user-select-all">@configNewAccessTokenPlain</pre>
+                    </div>
+                }
+                <h2 class="h6 mb-2">Workspace</h2>
+                <p class="text-muted small">Create a new workspace or pick an existing one to update its name.</p>
+                <form asp-action="SaveWorkspace" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <div class="mb-3">
+                        <label class="form-label" for="workspacePicker">Create or select workspace</label>
+                        <select class="form-select" id="workspacePicker">
+                            <option value="">Create new workspace</option>
+                            @foreach (var w in Model.Workspaces)
+                            {
+                                <option value="@w.Id" data-name="@w.Name">@w.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <input type="hidden" asp-for="WorkspaceForm.WorkspaceId" id="workspaceForm_WorkspaceId" />
+                    <div class="mb-3">
+                        <label asp-for="WorkspaceForm.Name" class="form-label"></label>
+                        <input asp-for="WorkspaceForm.Name" class="form-control" id="workspaceForm_Name" autocomplete="off" />
+                        <span asp-validation-for="WorkspaceForm.Name" class="text-danger"></span>
+                        <span asp-validation-for="WorkspaceForm.WorkspaceId" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save workspace</button>
+                </form>
+
+                <hr class="my-4" />
+
+                <h2 class="h6 mb-2">Add GIS entities to workspace</h2>
+                <p class="text-muted small">Assign existing GIS connections (entities) to a workspace. Choosing a workspace checks entities already linked to it; you can change the selection before saving.</p>
+                <form asp-action="AssignEntitiesToWorkspace" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <div class="mb-3">
+                        <label asp-for="AssignEntitiesForm.WorkspaceId" class="form-label"></label>
+                        <select asp-for="AssignEntitiesForm.WorkspaceId" class="form-select" id="assignEntitiesWorkspaceSelect">
+                            <option value="">Select workspace</option>
+                            @foreach (var w in Model.Workspaces)
+                            {
+                                <option value="@w.Id">@w.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="AssignEntitiesForm.WorkspaceId" class="text-danger"></span>
+                    </div>
+                    @if (Model.ExistingConnections.Count == 0)
+                    {
+                        <p class="text-muted small">No GIS entities exist yet. Create one in tab 2.</p>
+                    }
+                    else
+                    {
+                        var assignForm = Model.AssignEntitiesForm;
+                        var postedIds = assignForm.SelectedConnectionIds;
+                        var usePostedSelection = postedIds != null && postedIds.Count > 0;
+                        <div class="mb-2">GIS entities</div>
+                        <div id="assignEntitiesCheckboxList" class="border rounded p-3 mb-3" style="max-height: 220px; overflow-y: auto;">
+                            @foreach (var c in Model.ExistingConnections)
+                            {
+                                var isChecked = usePostedSelection
+                                    ? postedIds!.Contains(c.Id)
+                                    : (assignForm.WorkspaceId != Guid.Empty && c.GisWorkspaceId == assignForm.WorkspaceId);
+                                <div class="form-check">
+                                    <input class="form-check-input assign-entity-cb"
+                                           type="checkbox"
+                                           name="AssignEntitiesForm.SelectedConnectionIds"
+                                           value="@c.Id"
+                                           id="conn_@c.Id"
+                                           data-entity-workspace="@(c.GisWorkspaceId?.ToString() ?? "")"
+                                           @(isChecked ? "checked" : null) />
+                                    <label class="form-check-label" for="conn_@c.Id">@c.Name <span class="text-muted">(@c.Entity)</span></label>
+                                </div>
+                            }
+                        </div>
+                        <span asp-validation-for="AssignEntitiesForm.SelectedConnectionIds" class="text-danger d-block"></span>
+                        <button type="submit" class="btn btn-outline-primary">Add selected to workspace</button>
+                    }
+                </form>
+
+                <hr class="my-4" />
+
+                <h2 class="h6 mb-2">Access token</h2>
+                <p class="text-muted small">Issue an opaque token for API access to a workspace. The secret is shown only once after creation.</p>
+                <form asp-action="CreateWorkspaceAccessToken" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="All" class="text-danger mb-2"></div>
+                    <div class="mb-3">
+                        <label asp-for="AccessTokenForm.WorkspaceId" class="form-label"></label>
+                        <select asp-for="AccessTokenForm.WorkspaceId" class="form-select">
+                            <option value="">Select workspace</option>
+                            @foreach (var w in Model.Workspaces)
+                            {
+                                <option value="@w.Id">@w.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="AccessTokenForm.WorkspaceId" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="AccessTokenForm.Name" class="form-label"></label>
+                        <input asp-for="AccessTokenForm.Name" class="form-control" maxlength="200" autocomplete="off" placeholder="Label for this token" />
+                        <span asp-validation-for="AccessTokenForm.Name" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="AccessTokenForm.ExpiredDateTime" class="form-label"></label>
+                        <input asp-for="AccessTokenForm.ExpiredDateTime" class="form-control" type="datetime-local" step="60" />
+                        <span asp-validation-for="AccessTokenForm.ExpiredDateTime" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input asp-for="AccessTokenForm.IsActive" class="form-check-input" />
+                        <label asp-for="AccessTokenForm.IsActive" class="form-check-label"></label>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input asp-for="AccessTokenForm.IsPublic" class="form-check-input" />
+                        <label asp-for="AccessTokenForm.IsPublic" class="form-check-label"></label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create access token</button>
+                </form>
+
+                @{
+                    var tokensWithWorkspace = Model.Workspaces
+                        .SelectMany(w => w.AccessTokens.Select(t => (Workspace: w, Token: t)))
+                        .OrderBy(x => x.Workspace.Name)
+                        .ThenBy(x => x.Token.ExpiredDateTime)
+                        .ToList();
+                }
+                @if (tokensWithWorkspace.Count > 0)
+                {
+                    <hr class="my-4" />
+                    <h3 class="h6 mb-2">Existing access tokens</h3>
+                    @if (Model.UpdateTokenForm != null)
+                    {
+                        <div asp-validation-summary="All" class="text-danger small mb-2"></div>
+                    }
+                    <p class="text-muted small">View token details; use <strong>Edit</strong> to change name, active, and public. Workspace and expiry are shown for reference only. The secret is never shown again after creation.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Workspace</th>
+                                    <th>Token id</th>
+                                    <th>Expires</th>
+                                    <th>Name</th>
+                                    <th>Active</th>
+                                    <th>Public</th>
+                                    <th style="width: 1%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in tokensWithWorkspace)
+                                {
+                                    var t = row.Token;
+                                    var w = row.Workspace;
+                                    var edit = Model.UpdateTokenForm != null && Model.UpdateTokenForm.TokenId == t.Id ? Model.UpdateTokenForm : null;
+                                    var wsId = edit?.GisWorkspaceId ?? t.GisWorkspaceId;
+                                    var nameVal = edit?.Name ?? t.Name;
+                                    var expVal = edit?.ExpiredDateTime ?? t.ExpiredDateTime;
+                                    var activeVal = edit?.IsActive ?? t.IsActive;
+                                    var publicVal = edit?.IsPublic ?? t.IsPublic;
+                                    var expLocal = expVal.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
+                                    var isEditing = edit != null;
+                                    var tokenIdStr = t.Id.ToString();
+                                    <tr class="token-view-row @(isEditing ? "d-none" : "")" data-token-id="@tokenIdStr">
+                                        <td>@w.Name</td>
+                                        <td><code class="small user-select-all">@t.Id</code></td>
+                                        <td class="text-nowrap">@expVal.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                                        <td>@t.Name</td>
+                                        <td>
+                                            @if (t.IsActive)
+                                            {
+                                                <span class="badge text-bg-success">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge text-bg-secondary">No</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (t.IsPublic)
+                                            {
+                                                <span class="badge text-bg-success">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge text-bg-secondary">No</span>
+                                            }
+                                        </td>
+                                        <td class="text-nowrap">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-edit-token" data-token-id="@tokenIdStr">Edit</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="token-edit-row @(isEditing ? "" : "d-none")" data-token-id="@tokenIdStr">
+                                        <td colspan="7" class="bg-light p-3">
+                                            <form asp-action="UpdateWorkspaceAccessToken" method="post" class="d-flex flex-wrap align-items-end gap-3">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="UpdateToken.TokenId" value="@t.Id" />
+                                                <input type="hidden" name="UpdateToken.GisWorkspaceId" value="@wsId" />
+                                                <input type="hidden" name="UpdateToken.ExpiredDateTime" value="@expLocal" />
+                                                <div class="small text-muted w-100 mb-1">Workspace: <strong>@w.Name</strong> · Expires: <strong>@expVal.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</strong></div>
+                                                <div class="flex-grow-1" style="min-width: 12rem;">
+                                                    <label class="form-label small mb-0" for="name_@t.Id">Name</label>
+                                                    <input type="text" name="UpdateToken.Name" id="name_@t.Id" value="@nameVal" class="form-control form-control-sm" maxlength="200" autocomplete="off" />
+                                                </div>
+                                                <div class="form-check m-0">
+                                                    <input type="checkbox" name="UpdateToken.IsActive" value="true" class="form-check-input" id="active_@t.Id" @(activeVal ? "checked" : null) />
+                                                    <label class="form-check-label" for="active_@t.Id">Active</label>
+                                                </div>
+                                                <div class="form-check m-0">
+                                                    <input type="checkbox" name="UpdateToken.IsPublic" value="true" class="form-check-input" id="public_@t.Id" @(publicVal ? "checked" : null) />
+                                                    <label class="form-check-label" for="public_@t.Id">Public</label>
+                                                </div>
+                                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-cancel-token" data-token-id="@tokenIdStr">Cancel</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (Model.Workspaces.Count > 0)
+                {
+                    <hr class="my-4" />
+                    <h3 class="h6">Workspace summary</h3>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>GIS entities</th>
+                                    <th>Tokens</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var w in Model.Workspaces)
+                                {
+                                    <tr>
+                                        <td>@w.Name</td>
+                                        <td>@w.Entities.Count</td>
+                                        <td>@w.AccessTokens.Count</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 
@@ -230,6 +507,10 @@
                         </div>
                         <div class="small text-muted">@item.EntityLabel (@item.Entity)</div>
                         <div class="small mt-1">Query field: @item.QueryField</div>
+                        @if (item.GisWorkspace != null)
+                        {
+                            <div class="small mt-1">Workspace: <span class="text-dark">@item.GisWorkspace.Name</span></div>
+                        }
                     </div>
                 }
             </div>
@@ -520,6 +801,127 @@
 
             if (dataSourceSelect.value) {
                 loadCollectionsForSavedConnection();
+            }
+
+            const workspacePicker = document.getElementById('workspacePicker');
+            const workspaceIdHidden = document.getElementById('workspaceForm_WorkspaceId');
+            const workspaceNameInput = document.getElementById('workspaceForm_Name');
+            if (workspacePicker && workspaceIdHidden && workspaceNameInput) {
+                workspacePicker.addEventListener('change', function () {
+                    const opt = workspacePicker.selectedOptions[0];
+                    if (!workspacePicker.value) {
+                        workspaceIdHidden.value = '';
+                        workspaceNameInput.value = '';
+                        return;
+                    }
+                    workspaceIdHidden.value = workspacePicker.value;
+                    workspaceNameInput.value = opt.dataset.name || '';
+                });
+                if (workspaceIdHidden.value) {
+                    workspacePicker.value = workspaceIdHidden.value;
+                }
+            }
+
+            const assignEntitiesWorkspaceSelect = document.getElementById('assignEntitiesWorkspaceSelect');
+            const assignEntitiesCheckboxList = document.getElementById('assignEntitiesCheckboxList');
+
+            function syncAssignEntityCheckboxesToWorkspace() {
+                if (!assignEntitiesWorkspaceSelect || !assignEntitiesCheckboxList) {
+                    return;
+                }
+                const ws = assignEntitiesWorkspaceSelect.value || '';
+                assignEntitiesCheckboxList.querySelectorAll('input.assign-entity-cb').forEach(function (cb) {
+                    const entityWs = cb.getAttribute('data-entity-workspace') || '';
+                    cb.checked = ws !== '' && entityWs === ws;
+                });
+            }
+
+            if (assignEntitiesWorkspaceSelect && assignEntitiesCheckboxList) {
+                assignEntitiesWorkspaceSelect.addEventListener('change', syncAssignEntityCheckboxesToWorkspace);
+            }
+
+            function showAllTokenViewRows() {
+                document.querySelectorAll('.token-view-row').forEach(function (row) {
+                    row.classList.remove('d-none');
+                });
+                document.querySelectorAll('.token-edit-row').forEach(function (row) {
+                    row.classList.add('d-none');
+                });
+            }
+
+            function showTokenEditRow(tokenId) {
+                showAllTokenViewRows();
+                const viewRow = document.querySelector('.token-view-row[data-token-id="' + tokenId + '"]');
+                const editRow = document.querySelector('.token-edit-row[data-token-id="' + tokenId + '"]');
+                if (viewRow) {
+                    viewRow.classList.add('d-none');
+                }
+                if (editRow) {
+                    editRow.classList.remove('d-none');
+                }
+            }
+
+            document.querySelectorAll('.btn-edit-token').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const id = btn.getAttribute('data-token-id');
+                    if (id) {
+                        showTokenEditRow(id);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-cancel-token').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    showAllTokenViewRows();
+                });
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            var storageKey = 'tdpGisConfigActiveTab';
+            var tabList = document.getElementById('configTabs');
+            if (!tabList || typeof bootstrap === 'undefined') {
+                return;
+            }
+
+            function rememberTabFromPane(pane) {
+                if (pane && pane.id) {
+                    sessionStorage.setItem(storageKey, '#' + pane.id);
+                }
+            }
+
+            tabList.querySelectorAll('button[data-bs-toggle="tab"]').forEach(function (btn) {
+                btn.addEventListener('shown.bs.tab', function () {
+                    var target = btn.getAttribute('data-bs-target');
+                    if (target) {
+                        sessionStorage.setItem(storageKey, target);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.tab-content .tab-pane form').forEach(function (form) {
+                form.addEventListener('submit', function () {
+                    rememberTabFromPane(form.closest('.tab-pane'));
+                });
+            });
+
+            var wsPane = document.getElementById('workspace-tab-pane');
+            var forceWorkspace = wsPane && wsPane.getAttribute('data-force-workspace-tab') === 'true';
+            if (forceWorkspace) {
+                var wsTrigger = tabList.querySelector('button[data-bs-target="#workspace-tab-pane"]');
+                if (wsTrigger) {
+                    bootstrap.Tab.getOrCreateInstance(wsTrigger).show();
+                    sessionStorage.setItem(storageKey, '#workspace-tab-pane');
+                }
+            } else {
+                var saved = sessionStorage.getItem(storageKey);
+                if (saved) {
+                    var trigger = tabList.querySelector('button[data-bs-target="' + saved + '"]');
+                    if (trigger) {
+                        bootstrap.Tab.getOrCreateInstance(trigger).show();
+                    }
+                }
             }
         })();
     </script>

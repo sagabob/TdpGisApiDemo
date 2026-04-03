@@ -28,20 +28,28 @@ public class GisConnectionConfiguration : IEntityTypeConfiguration<GisConnection
             .IsRequired()
             .HasConversion<string>();
 
-        // Defining the relationships
+        builder.HasIndex("DataSourceId");
+        builder.HasIndex(x => x.GisWorkspaceId);
 
-        // One-to-Many with PropertyMapping:
-        // A GisConnection has many PropertyMappings. We use a shadow foreign key "GisConnectionId"
+        // One-to-many: PropertyMapping rows always belong to a GisConnection (shadow FK GisConnectionId).
         builder.HasMany(x => x.PropertyMappings)
-            .WithOne() // PropertyMapping has no navigation property back
+            .WithOne()
             .HasForeignKey("GisConnectionId")
+            .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Many-to-One with DataSourceSetting:
-        // A GisConnection has one DataSource, which can be reused by multiple connections.
+        // Many-to-one: DataSource is required; shared across many connections.
         builder.HasOne(x => x.DataSource)
-            .WithMany() // DataSource has no navigation property back
+            .WithMany()
             .HasForeignKey("DataSourceId")
+            .IsRequired()
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Optional workspace: clearing or deleting workspace sets GisWorkspaceId to null on connections.
+        builder.HasOne(x => x.GisWorkspace)
+            .WithMany(x => x.Entities)
+            .HasForeignKey(x => x.GisWorkspaceId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

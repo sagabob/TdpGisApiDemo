@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TdpGis.ApplicationDb.Database;
 
@@ -11,9 +12,11 @@ using TdpGis.ApplicationDb.Database;
 namespace TdpGis.ApplicationDb.Migrations
 {
     [DbContext(typeof(GisAppDbContext))]
-    partial class GisAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403122304_AddGisWorkspaceAccessTokenIsPublic")]
+    partial class AddGisWorkspaceAccessTokenIsPublic
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -127,11 +130,6 @@ namespace TdpGis.ApplicationDb.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 

@@ -11,6 +11,10 @@ public class GisAppDbContext(DbContextOptions<GisAppDbContext> options) : DbCont
 
     public DbSet<PropertyMapping> PropertyMappings { get; set; }
 
+    public DbSet<GisWorkspace> GisWorkspaces { get; set; }
+
+    public DbSet<GisWorkspaceAccessToken> GisWorkspaceAccessTokens { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
