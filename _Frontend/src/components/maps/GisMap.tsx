@@ -36,7 +36,6 @@ export const GisMap = () => {
                     key={"selected" + selectedGeo.Id}
                     longitude={Number(selectedGeo.geometry.coordinates[0][0])}
                     latitude={Number(selectedGeo.geometry.coordinates[0][1])}
-                    color={selectedPinColor}
                     onClick={e => {
                         // If we let the click event propagates to the map, it will immediately close the popup
                         // with `closeOnClick: true`
@@ -51,15 +50,16 @@ export const GisMap = () => {
             {selectedGeo && (
                 <Popup
                     key={selectedGeo.Id}
-                    anchor="top"
+                    anchor="bottom"
+                    offset={[0, -14]}
                     longitude={Number(selectedGeo.geometry.coordinates[0][0])}
                     latitude={Number(selectedGeo.geometry.coordinates[0][1])}
                     onClose={() => setSelectedGeo(null)}
 
                 >
                     <div>
-                        <h5>{selectedGeo.placeName}</h5>
-                        <p>{selectedGeo.locality}</p>
+                        <h5 className="font-semibold text-sm text-slate-800 m-0">{selectedGeo.placeName}</h5>
+                        <p className="text-xs text-slate-500 m-0 mt-1">{selectedGeo.locality}</p>
                     </div>
 
                 </Popup>)

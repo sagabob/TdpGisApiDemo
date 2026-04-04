@@ -43,7 +43,7 @@ export const DropdownComponent = () => {
         setPosition({ ...initialPosition, longitude: Number(selected.geometry.coordinates[0][0]), latitude: Number(selected.geometry.coordinates[0][1]) })
     };
 
-    const baseClassListItem = "w-full px-2 py-2 rounded-lg border-solid border-2 border-transparent border-b-slate-100 flex cursor-pointer hover:bg-slate-50 transition-colors"
+    const baseClassListItem = "w-full px-2 py-2 rounded-lg flex cursor-pointer hover:bg-slate-50 transition-colors border-b border-b-slate-100"
     const baseClassListItemSelected = "w-full px-2 py-2 rounded-lg border-solid border-2 border-blue-500 bg-blue-50 flex cursor-pointer transition-colors"
     
     return (

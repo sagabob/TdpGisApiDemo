@@ -6,7 +6,7 @@ import { DropdownComponent } from "@/components/layouts/DropdownComponent";
 const SearchBar = () => {
     const { searchValue, setSearchValue } = useContext(SearchContext);
 
-    const className = "flex-auto min-w-0 block w-full px-4 py-3 text-base font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded shadow-md transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
+    const className = "min-w-0 block w-full px-4 py-3 text-base font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded shadow-md transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
 
     const searchInput = { searchValue: searchValue, setSearchValue: setSearchValue, debounceTimeout: 300, cssClassName: className, cssStyle: null }
     return (
