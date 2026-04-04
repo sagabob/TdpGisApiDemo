@@ -5,6 +5,9 @@ namespace TdpGis.Endpoints.Models;
 
 public class GisConnectionFormViewModel
 {
+    /// <summary>When set, the form updates an existing GIS connection instead of creating one.</summary>
+    public Guid? GisConnectionId { get; set; }
+
     [Required]
     [Display(Name = "Saved MongoDB Connection")]
     public Guid? DataSourceId { get; set; }

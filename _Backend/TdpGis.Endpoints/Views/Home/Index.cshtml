@@ -4,6 +4,7 @@
     ViewData["Title"] = "Query Configuration";
     var configSuccessMessage = TempData["SuccessMessage"] as string;
     var configNewAccessTokenPlain = TempData["CreatedAccessTokenPlain"] as string;
+    var forceGisConfigTab = Model.Form.GisConnectionId.HasValue && Model.Form.GisConnectionId.Value != Guid.Empty;
 
     static string MaskConnectionString(string value)
     {
@@ -103,10 +104,30 @@
     </form>
 </div>
 
-<div class="tab-pane fade" id="gis-tab-pane" role="tabpanel" aria-labelledby="gis-tab">
+<div class="tab-pane fade" id="gis-tab-pane" role="tabpanel" aria-labelledby="gis-tab" data-force-gis-tab="@(forceGisConfigTab ? "true" : null)">
     <form asp-action="SaveGisConnection" method="post">
         @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Form.GisConnectionId"/>
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label class="form-label" for="gisConnectionPicker">GIS connection</label>
+            <select class="form-select" id="gisConnectionPicker">
+                <option value="">Create new GIS connection</option>
+                @foreach (var gc in Model.ExistingConnections)
+                {
+                    if (Model.Form.GisConnectionId == gc.Id)
+                    {
+                        <option value="@gc.Id" selected>@gc.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@gc.Id">@gc.Name</option>
+                    }
+                }
+            </select>
+            <small class="text-muted">Choose an existing connection to edit its settings, or create new and fill the form below.</small>
+        </div>
 
         <div class="mb-3">
             <label asp-for="Form.DataSourceId" class="form-label"></label>
@@ -165,8 +186,8 @@
 
         <div class="mb-3">
             <label asp-for="Form.GeometryType" class="form-label"></label>
-            <input class="form-control" value="@Model.Form.GeometryType" readonly/>
-            <input asp-for="Form.GeometryType" type="hidden"/>
+            <select asp-for="Form.GeometryType" class="form-select" asp-items="Html.GetEnumSelectList<GeometryType>()"></select>
+            <span asp-validation-for="Form.GeometryType" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
@@ -227,7 +248,7 @@
             <span asp-validation-for="Form.PropertyMappingsText" class="text-danger"></span>
         </div>
 
-        <button type="submit" class="btn btn-primary">Save GIS Connection</button>
+        <button type="submit" class="btn btn-primary">@(forceGisConfigTab ? "Update GIS connection" : "Save GIS connection")</button>
     </form>
 </div>
 
@@ -550,6 +571,15 @@
             const existingQueryFieldValue = queryFieldSelect.dataset.currentValue || '';
             let currentFields = [];
             let mappingRows = [];
+
+            const gisConnectionPicker = document.getElementById('gisConnectionPicker');
+            if (gisConnectionPicker) {
+                gisConnectionPicker.addEventListener('change', function () {
+                    const v = gisConnectionPicker.value;
+                    const baseUrl = '@Url.Action("Configuration", "Home")';
+                    window.location.href = v ? baseUrl + '?gisEdit=' + encodeURIComponent(v) : baseUrl;
+                });
+            }
 
             async function postJson(url, body) {
                 const response = await fetch(url, {
@@ -923,11 +953,21 @@
                     sessionStorage.setItem(storageKey, '#workspace-tab-pane');
                 }
             } else {
-                var saved = sessionStorage.getItem(storageKey);
-                if (saved) {
-                    var trigger = tabList.querySelector('button[data-bs-target="' + saved + '"]');
-                    if (trigger) {
-                        bootstrap.Tab.getOrCreateInstance(trigger).show();
+                var gisPane = document.getElementById('gis-tab-pane');
+                var forceGis = gisPane && gisPane.getAttribute('data-force-gis-tab') === 'true';
+                if (forceGis) {
+                    var gisTrigger = tabList.querySelector('button[data-bs-target="#gis-tab-pane"]');
+                    if (gisTrigger) {
+                        bootstrap.Tab.getOrCreateInstance(gisTrigger).show();
+                        sessionStorage.setItem(storageKey, '#gis-tab-pane');
+                    }
+                } else {
+                    var saved = sessionStorage.getItem(storageKey);
+                    if (saved) {
+                        var trigger = tabList.querySelector('button[data-bs-target="' + saved + '"]');
+                        if (trigger) {
+                            bootstrap.Tab.getOrCreateInstance(trigger).show();
+                        }
                     }
                 }
             }

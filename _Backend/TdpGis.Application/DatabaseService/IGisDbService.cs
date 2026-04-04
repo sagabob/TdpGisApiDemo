@@ -13,7 +13,24 @@ public interface IGisDbService
 
     List<GisConnection> GetAllConnections();
 
+    GisConnection? GetConnectionById(Guid id);
+
+    bool GisConnectionNameExists(string name, Guid? excludeConnectionId = null);
+
     Task<GisConnection> CreateConnectionAsync(GisConnection connection, CancellationToken cancellationToken = default);
+
+    Task<GisConnection?> UpdateConnectionAsync(
+        Guid id,
+        Guid dataSourceId,
+        string name,
+        string description,
+        string entity,
+        string entityLabel,
+        string queryField,
+        GeometryType geometryType,
+        Guid? gisWorkspaceId,
+        List<PropertyMapping> propertyMappings,
+        CancellationToken cancellationToken = default);
 
     List<DataSourceSetting> GetMongoDataSources();
 

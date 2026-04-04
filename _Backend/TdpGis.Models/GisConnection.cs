@@ -22,6 +22,8 @@ public class GisConnection
 
     public GisWorkspace? GisWorkspace { get; set; }
 
+    public Guid DataSourceId { get; set; }
+
     public required DataSourceSetting DataSource { get; set; }
 }
 

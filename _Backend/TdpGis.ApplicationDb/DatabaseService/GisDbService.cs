@@ -53,6 +53,24 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
             .ToList();
     }
 
+    public GisConnection? GetConnectionById(Guid id)
+    {
+        return dbContext.GisConnections
+            .AsNoTracking()
+            .Include(x => x.PropertyMappings)
+            .Include(x => x.DataSource)
+            .Include(x => x.GisWorkspace)
+            .FirstOrDefault(x => x.Id == id);
+    }
+
+    public bool GisConnectionNameExists(string name, Guid? excludeConnectionId = null)
+    {
+        var trimmed = name.Trim();
+        return dbContext.GisConnections
+            .AsNoTracking()
+            .Any(c => c.Name == trimmed && (!excludeConnectionId.HasValue || c.Id != excludeConnectionId.Value));
+    }
+
     public async Task<GisConnection> CreateConnectionAsync(GisConnection connection,
         CancellationToken cancellationToken = default)
     {
@@ -61,6 +79,61 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
         var entity = await dbContext.GisConnections.AddAsync(connection, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return entity.Entity;
+    }
+
+    public async Task<GisConnection?> UpdateConnectionAsync(
+        Guid id,
+        Guid dataSourceId,
+        string name,
+        string description,
+        string entity,
+        string entityLabel,
+        string queryField,
+        GeometryType geometryType,
+        Guid? gisWorkspaceId,
+        List<PropertyMapping> propertyMappings,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await dbContext.GisConnections
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        if (existing is null)
+        {
+            return null;
+        }
+
+        var dataSourceExists = await dbContext.DataSourceSettings.AnyAsync(d => d.Id == dataSourceId, cancellationToken);
+        if (!dataSourceExists)
+        {
+            throw new InvalidOperationException("Selected MongoDB connection was not found.");
+        }
+
+        // Delete old mappings in the database without tracking those rows. Loading Include(PropertyMappings)
+        // and then RemoveRange can produce DELETE statements that match 0 rows (stale state), which throws
+        // DbUpdateConcurrencyException.
+        await dbContext.PropertyMappings
+            .Where(p => EF.Property<Guid>(p, "GisConnectionId") == id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        existing.Name = name.Trim();
+        existing.Description = description.Trim();
+        existing.Entity = entity.Trim();
+        existing.EntityLabel = entityLabel.Trim();
+        existing.QueryField = queryField.Trim();
+        existing.GeometryType = geometryType;
+        existing.GisWorkspaceId = gisWorkspaceId;
+        existing.DataSourceId = dataSourceId;
+
+        existing.PropertyMappings ??= new List<PropertyMapping>();
+        existing.PropertyMappings.Clear();
+
+        foreach (var pm in propertyMappings)
+        {
+            pm.Id = Guid.NewGuid();
+            existing.PropertyMappings.Add(pm);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return existing;
     }
 
     public List<DataSourceSetting> GetMongoDataSources()

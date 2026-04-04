@@ -16,9 +16,15 @@ public class HomeController(IGisDbService gisDbService) : Controller
         return View("Project");
     }
 
-    public IActionResult Configuration()
+    public IActionResult Configuration(Guid? gisEdit)
     {
         var model = BuildPageModel();
+        if (gisEdit.HasValue)
+        {
+            var conn = gisDbService.GetConnectionById(gisEdit.Value);
+            if (conn is not null) MapGisConnectionToForm(model.Form, conn);
+        }
+
         return View("Index", model);
     }
 
@@ -87,6 +93,9 @@ public class HomeController(IGisDbService gisDbService) : Controller
             if (ws is null) ModelState.AddModelError(nameof(model.GisWorkspaceId), "Selected workspace was not found.");
         }
 
+        if (gisDbService.GisConnectionNameExists(model.Name.Trim(), model.GisConnectionId))
+            ModelState.AddModelError(nameof(model.Name), "Another GIS connection already uses this name.");
+
         if (!ModelState.IsValid)
         {
             var pageModel = BuildPageModel();
@@ -95,6 +104,42 @@ public class HomeController(IGisDbService gisDbService) : Controller
         }
 
         Guid? workspaceFk = model.GisWorkspaceId is { } wid && wid != Guid.Empty ? wid : null;
+
+        if (model.GisConnectionId is { } editId && editId != Guid.Empty)
+        {
+            try
+            {
+                var updated = await gisDbService.UpdateConnectionAsync(
+                    editId,
+                    model.DataSourceId!.Value,
+                    model.Name.Trim(),
+                    model.Description ?? string.Empty,
+                    model.Entity.Trim(),
+                    model.EntityLabel.Trim(),
+                    model.QueryField.Trim(),
+                    model.GeometryType,
+                    workspaceFk,
+                    propertyMappings,
+                    cancellationToken);
+                if (updated is null)
+                {
+                    ModelState.AddModelError(nameof(model.GisConnectionId), "GIS connection was not found.");
+                    var pageModel = BuildPageModel();
+                    pageModel.Form = model;
+                    return View("Index", pageModel);
+                }
+
+                TempData["SuccessMessage"] = $"Updated query entity '{updated.Name}'.";
+                return RedirectToAction(nameof(Configuration), new { gisEdit = editId });
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(nameof(model.DataSourceId), ex.Message);
+                var pageModel = BuildPageModel();
+                pageModel.Form = model;
+                return View("Index", pageModel);
+            }
+        }
 
         var connection = new GisConnection
         {
@@ -108,7 +153,8 @@ public class HomeController(IGisDbService gisDbService) : Controller
             PropertyMappings = propertyMappings,
             GisWorkspaceId = workspaceFk,
             GisWorkspace = null,
-            DataSource = dataSource!
+            DataSourceId = dataSource!.Id,
+            DataSource = dataSource
         };
 
         await gisDbService.CreateConnectionAsync(connection, cancellationToken);
@@ -374,6 +420,27 @@ public class HomeController(IGisDbService gisDbService) : Controller
             SavedMongoConnections = gisDbService.GetMongoDataSources(),
             Workspaces = gisDbService.GetAllWorkspaces()
         };
+    }
+
+    private static void MapGisConnectionToForm(GisConnectionFormViewModel form, GisConnection c)
+    {
+        form.GisConnectionId = c.Id;
+        form.DataSourceId = c.DataSource.Id;
+        form.Name = c.Name;
+        form.Description = c.Description;
+        form.Entity = c.Entity;
+        form.EntityLabel = c.EntityLabel;
+        form.QueryField = c.QueryField;
+        form.GeometryType = c.GeometryType;
+        form.GisWorkspaceId = c.GisWorkspaceId;
+        form.PropertyMappingsText = BuildPropertyMappingsText(c);
+    }
+
+    private static string BuildPropertyMappingsText(GisConnection c)
+    {
+        return string.Join(Environment.NewLine,
+            c.PropertyMappings.OrderBy(m => m.PropertyName)
+                .Select(m => $"{m.PropertyName}|{m.PropertyLabel}|{m.ColumnType}"));
     }
 
     private static List<PropertyMapping> ParseMappings(string mappingsText)
