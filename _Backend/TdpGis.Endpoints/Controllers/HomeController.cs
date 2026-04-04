@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
@@ -9,8 +10,10 @@ using TdpGis.Models;
 
 namespace TdpGis.Endpoints.Controllers;
 
+[Authorize]
 public class HomeController(IGisDbService gisDbService) : Controller
 {
+    [AllowAnonymous]
     public IActionResult Index()
     {
         return View("Project");
@@ -106,7 +109,6 @@ public class HomeController(IGisDbService gisDbService) : Controller
         Guid? workspaceFk = model.GisWorkspaceId is { } wid && wid != Guid.Empty ? wid : null;
 
         if (model.GisConnectionId is { } editId && editId != Guid.Empty)
-        {
             try
             {
                 var updated = await gisDbService.UpdateConnectionAsync(
@@ -139,7 +141,6 @@ public class HomeController(IGisDbService gisDbService) : Controller
                 pageModel.Form = model;
                 return View("Index", pageModel);
             }
-        }
 
         var connection = new GisConnection
         {
@@ -406,6 +407,7 @@ public class HomeController(IGisDbService gisDbService) : Controller
         }
     }
 
+    [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {

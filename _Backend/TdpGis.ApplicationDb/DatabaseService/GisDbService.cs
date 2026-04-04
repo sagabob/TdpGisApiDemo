@@ -101,16 +101,11 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
         var queryFieldTrimmed = queryField.Trim();
 
         var connectionExists = await dbContext.GisConnections.AnyAsync(c => c.Id == id, cancellationToken);
-        if (!connectionExists)
-        {
-            return null;
-        }
+        if (!connectionExists) return null;
 
-        var dataSourceExists = await dbContext.DataSourceSettings.AnyAsync(d => d.Id == dataSourceId, cancellationToken);
-        if (!dataSourceExists)
-        {
-            throw new InvalidOperationException("Selected MongoDB connection was not found.");
-        }
+        var dataSourceExists =
+            await dbContext.DataSourceSettings.AnyAsync(d => d.Id == dataSourceId, cancellationToken);
+        if (!dataSourceExists) throw new InvalidOperationException("Selected MongoDB connection was not found.");
 
         // Avoid loading a tracked graph: tracked DELETE/UPDATE + SaveChanges can report 0 rows affected
         // (DbUpdateConcurrencyException). Use bulk ExecuteDelete/ExecuteUpdate, then INSERT new mappings

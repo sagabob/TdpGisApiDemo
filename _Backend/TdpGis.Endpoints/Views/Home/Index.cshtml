@@ -584,6 +584,7 @@
             async function postJson(url, body) {
                 const response = await fetch(url, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'RequestVerificationToken': tokenInput ? tokenInput.value : ''
