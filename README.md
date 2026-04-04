@@ -64,6 +64,25 @@ Default ports (see `Properties/launchSettings.json`): **https://localhost:7036**
 
 Tab **2 (GIS connection)** supports **editing** an existing GIS connection via the picker and `?gisEdit={guid}`.
 
+## Frontend
+
+There is **no separate frontend repository** or Node/npm build. The UI ships with the **TdpGis.Endpoints** project as a classic **ASP.NET Core MVC** app: **Razor views** render HTML on the server, with **static assets** under `wwwroot/` and **inline scripts** on the configuration page.
+
+| Area | Location / stack |
+|------|------------------|
+| **Views** | `_Backend/TdpGis.Endpoints/Views/` — `Home/Index.cshtml` (configuration hub), `Home/Project.cshtml` (landing), `Shared/_Layout.cshtml` |
+| **CSS / JS libraries** | `wwwroot/lib/` — **Bootstrap 5**, **jQuery**, **jquery-validation** + **unobtrusive** (used with `_ValidationScriptsPartial` for form validation) |
+| **Site assets** | `wwwroot/css/site.css`, `wwwroot/js/site.js` |
+| **Layout** | Bootstrap grid, nav **tabs** for MongoDB → GIS → Workspace & token |
+
+**Client-side behavior** (vanilla JS in `Index.cshtml` `@section Scripts`):
+
+- **Tabs:** `sessionStorage` remembers the last active tab; new access tokens and GIS edit flows can force the relevant tab on load.
+- **GIS tab:** loads Mongo collections and a sample document via `fetch` POSTs to `HomeController` JSON actions (`ValidateMongoConnection`, `GetCollectionsForSavedConnection`, `GetMongoSampleForSavedConnection`) with the anti-forgery token header.
+- **Workspace tab:** syncs “assign entities to workspace” checkboxes when the workspace dropdown changes; access-token rows support inline edit (name, flags) with read-only vs edit rows.
+
+To change styling or add global scripts, edit `_Layout.cshtml`, `site.css` / `site.js`, or the libraries under `wwwroot/lib/`.
+
 ## Features (summary)
 
 - Save and validate **MongoDB** connection strings (metadata in SQL).
