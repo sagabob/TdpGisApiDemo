@@ -94,9 +94,14 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
         List<PropertyMapping> propertyMappings,
         CancellationToken cancellationToken = default)
     {
-        var existing = await dbContext.GisConnections
-            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
-        if (existing is null)
+        var nameTrimmed = name.Trim();
+        var descriptionTrimmed = description.Trim();
+        var entityTrimmed = entity.Trim();
+        var entityLabelTrimmed = entityLabel.Trim();
+        var queryFieldTrimmed = queryField.Trim();
+
+        var connectionExists = await dbContext.GisConnections.AnyAsync(c => c.Id == id, cancellationToken);
+        if (!connectionExists)
         {
             return null;
         }
@@ -107,33 +112,52 @@ public class GisDbService(GisAppDbContext dbContext) : IGisDbService
             throw new InvalidOperationException("Selected MongoDB connection was not found.");
         }
 
-        // Delete old mappings in the database without tracking those rows. Loading Include(PropertyMappings)
-        // and then RemoveRange can produce DELETE statements that match 0 rows (stale state), which throws
-        // DbUpdateConcurrencyException.
+        // Avoid loading a tracked graph: tracked DELETE/UPDATE + SaveChanges can report 0 rows affected
+        // (DbUpdateConcurrencyException). Use bulk ExecuteDelete/ExecuteUpdate, then INSERT new mappings
+        // in one transaction; SaveChanges only inserts PropertyMappings.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
         await dbContext.PropertyMappings
             .Where(p => EF.Property<Guid>(p, "GisConnectionId") == id)
             .ExecuteDeleteAsync(cancellationToken);
 
-        existing.Name = name.Trim();
-        existing.Description = description.Trim();
-        existing.Entity = entity.Trim();
-        existing.EntityLabel = entityLabel.Trim();
-        existing.QueryField = queryField.Trim();
-        existing.GeometryType = geometryType;
-        existing.GisWorkspaceId = gisWorkspaceId;
-        existing.DataSourceId = dataSourceId;
+        var rowsUpdated = await dbContext.GisConnections
+            .Where(c => c.Id == id)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(c => c.Name, nameTrimmed)
+                    .SetProperty(c => c.Description, descriptionTrimmed)
+                    .SetProperty(c => c.Entity, entityTrimmed)
+                    .SetProperty(c => c.EntityLabel, entityLabelTrimmed)
+                    .SetProperty(c => c.QueryField, queryFieldTrimmed)
+                    .SetProperty(c => c.GeometryType, geometryType)
+                    .SetProperty(c => c.GisWorkspaceId, gisWorkspaceId)
+                    .SetProperty(c => c.DataSourceId, dataSourceId),
+                cancellationToken);
 
-        existing.PropertyMappings ??= new List<PropertyMapping>();
-        existing.PropertyMappings.Clear();
+        if (rowsUpdated != 1)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return null;
+        }
 
         foreach (var pm in propertyMappings)
         {
-            pm.Id = Guid.NewGuid();
-            existing.PropertyMappings.Add(pm);
+            var row = new PropertyMapping
+            {
+                Id = Guid.NewGuid(),
+                PropertyName = pm.PropertyName,
+                PropertyLabel = pm.PropertyLabel,
+                ColumnType = pm.ColumnType
+            };
+            dbContext.PropertyMappings.Add(row);
+            dbContext.Entry(row).Property("GisConnectionId").CurrentValue = id;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return existing;
+        await transaction.CommitAsync(cancellationToken);
+
+        return GetConnectionById(id);
     }
 
     public List<DataSourceSetting> GetMongoDataSources()
