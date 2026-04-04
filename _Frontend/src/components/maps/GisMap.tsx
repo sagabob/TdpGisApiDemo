@@ -1,9 +1,9 @@
 import Map, { Marker, NavigationControl, Popup, ScaleControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { mapboxAccessToken } from '../../config/gis-config';
+import { mapboxAccessToken, selectedPinColor } from '@/config/gis-config';
 import { useContext } from 'react';
-import SearchContext from '../../contexts/SearchContext';
-import Pin from './Pin';
+import SearchContext from '@/contexts/SearchContext';
+import Pin from '@/components/maps/Pin';
 
 export const GisMap = () => {
     const { loadedGeoData, selectedGeo, setSelectedGeo, initialPosition, setPosition } = useContext(SearchContext);
@@ -27,7 +27,6 @@ export const GisMap = () => {
                         setSelectedGeo(item);
 
                     }}
-
                 >
                     <Pin size={20} />
                 </Marker>
@@ -37,7 +36,7 @@ export const GisMap = () => {
                     key={"selected" + selectedGeo.Id}
                     longitude={Number(selectedGeo.geometry.coordinates[0][0])}
                     latitude={Number(selectedGeo.geometry.coordinates[0][1])}
-                    color="#ef4444"
+                    color={selectedPinColor}
                     onClick={e => {
                         // If we let the click event propagates to the map, it will immediately close the popup
                         // with `closeOnClick: true`
@@ -45,7 +44,7 @@ export const GisMap = () => {
 
                     }}
                 >
-                    <Pin size={30} />
+                    <Pin size={30} color={selectedPinColor} />
                 </Marker>)
             }
 

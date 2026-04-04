@@ -1,7 +1,7 @@
 import { useContext } from "react";
-import SearchContext from "../../contexts/SearchContext";
-import SimpleSearchComponent from "./SimpleSearchComponent";
-import { DropdownComponent } from "./DropdownComponent";
+import SearchContext from "@/contexts/SearchContext";
+import SimpleSearchComponent from "@/components/layouts/SimpleSearchComponent";
+import { DropdownComponent } from "@/components/layouts/DropdownComponent";
 
 const SearchBar = () => {
     const { searchValue, setSearchValue } = useContext(SearchContext);

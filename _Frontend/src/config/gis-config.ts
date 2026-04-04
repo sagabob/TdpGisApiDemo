@@ -10,4 +10,7 @@ const searchGeoTypeUrl = `${baseUrl}/GisQuery/querybytext`
 
 const mapboxAccessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || ""
 
-export { defaultPosition, mapboxAccessToken, searchInstanceUrl, searchGeoTypeUrl }
+const defaultPinColor = "#d00"
+const selectedPinColor = "#3b82f6"
+
+export { defaultPosition, mapboxAccessToken, searchInstanceUrl, searchGeoTypeUrl, defaultPinColor, selectedPinColor }

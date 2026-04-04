@@ -1,8 +1,8 @@
 import { useEffect, useContext } from 'react'
-import SearchContextConsumer, { type GeoFeature } from '../../contexts/SearchContext';
-import { searchGeoTypeUrl } from '../../config/gis-config';
+import SearchContextConsumer, { type GeoFeature } from '@/contexts/SearchContext';
+import { searchGeoTypeUrl } from '@/config/gis-config';
 import axios from "axios";
-import searchIcon from '../../assets/images/features/point-of-interest.svg'
+import searchIcon from '@/assets/images/features/point-of-interest.svg'
 
 export const DropdownComponent = () => {
     const { searchValue, loadedGeoData, getGeoData, selectedGeo, setSelectedGeo, setPosition, initialPosition } = useContext(SearchContextConsumer);
