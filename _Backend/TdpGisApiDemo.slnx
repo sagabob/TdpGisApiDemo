@@ -1,8 +1,7 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="TdpGis.Application/TdpGis.Application.csproj" />
-    <Project Path="TdpGis.ApplicationDb/TdpGis.ApplicationDb.csproj" Id="a038e268-133b-4736-9bed-59bea93735c3" />
-    <Project Path="TdpGis.Endpoints/TdpGis.Endpoints.csproj" Id="6ab5e1d7-9acd-4fc8-b16b-053512f89a85" />
-    <Project Path="TdpGis.Models/TdpGis.Models.csproj" />
-  </Folder>
+  <Project Path="TdpGis.Api/TdpGis.Api.csproj" Id="00d5e567-a370-4bc6-9150-ff1cfe24eb4e" />
+  <Project Path="TdpGis.Application/TdpGis.Application.csproj" />
+  <Project Path="TdpGis.Domain/TdpGis.Domain.csproj" />
+  <Project Path="TdpGis.Endpoints/TdpGis.Endpoints.csproj" />
+  <Project Path="TdpGis.Infrastructure/TdpGis.Infrastructure.csproj" />
 </Solution>

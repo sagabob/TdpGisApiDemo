@@ -7,8 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FastEndpoints" Version="8.1.0" />
+    <PackageReference Include="FastEndpoints.Swagger" Version="8.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TdpGis.Application\TdpGis.Application.csproj" />
-    <ProjectReference Include="..\TdpGis.Domain\TdpGis.Domain.csproj" />
     <ProjectReference Include="..\TdpGis.Infrastructure\TdpGis.Infrastructure.csproj" />
   </ItemGroup>
 

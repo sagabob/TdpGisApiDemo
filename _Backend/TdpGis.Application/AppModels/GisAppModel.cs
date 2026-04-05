@@ -1,4 +1,4 @@
-﻿using TdpGis.Models;
+﻿using TdpGis.Domain;
 
 namespace TdpGis.Application.AppModels;
 
@@ -18,6 +18,7 @@ public class GisAppModel
         {
             Id = x.Value.Id,
             Name = x.Value.Name,
+            Entity = x.Value.Entity,
             Description = x.Value.Description,
             QueryField = x.Value.QueryField,
             PropertyMappings = x.Value.PropertyMappings,

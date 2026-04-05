@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using TdpGis.Models;
+using TdpGis.Domain;
 
 namespace TdpGis.Endpoints.Models;
 
