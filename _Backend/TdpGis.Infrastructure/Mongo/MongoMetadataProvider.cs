@@ -66,7 +66,7 @@ public sealed class MongoMetadataProvider : IMongoMetadataProvider
         return new MongoDocumentSampleResult(true, fields, json);
     }
 
-    private static string GetDatabaseName(string connectionString)
+    public string GetDatabaseName(string connectionString)
     {
         var mongoUrl = MongoUrl.Create(connectionString.Trim());
         return mongoUrl.DatabaseName ?? string.Empty;

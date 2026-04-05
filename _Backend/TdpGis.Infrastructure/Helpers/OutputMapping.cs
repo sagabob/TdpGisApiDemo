@@ -8,29 +8,80 @@ public static class OutputMapping
 {
     public static JObject ConvertFromBson(BsonDocument doc, List<PropertyMapping> maps)
     {
-        var jo = new JObject();
-        try
-        {
-            foreach (var prop in maps)
-                switch (prop.ColumnType)
-                {
-                    case PropertyType.Normal:
-                        jo.Add(prop.PropertyLabel, doc.GetValue(prop.PropertyName).ToString());
-                        break;
+        ArgumentNullException.ThrowIfNull(doc);
+        ArgumentNullException.ThrowIfNull(maps);
 
-                    case PropertyType.Object:
-                        //work around the problem due to JObject parse BsonDocument ToJson function
-                        var currentElement = JObject.Parse(doc.GetElement(prop.PropertyName).ToJson());
-                        jo.Add(prop.PropertyLabel,
-                            currentElement["Value"] == null ? new JObject() : currentElement["Value"] as JObject);
-                        break;
-                }
-        }
-        catch (Exception ex)
+        var jo = new JObject();
+        foreach (var prop in maps)
         {
-            // ignored
+            if (string.IsNullOrEmpty(prop.PropertyName))
+                continue;
+
+            if (!doc.TryGetValue(prop.PropertyName, out var value))
+                continue;
+
+            switch (prop.ColumnType)
+            {
+                case PropertyType.Normal:
+                    jo[prop.PropertyLabel] = NormalToJToken(value);
+                    break;
+
+                case PropertyType.Object:
+                    jo[prop.PropertyLabel] = value.IsBsonNull ? JValue.CreateNull() : BsonValueToJToken(value);
+                    break;
+            }
         }
 
         return jo;
+    }
+
+    /// <summary>
+    ///     Normal columns are exposed as JSON string values (legacy behavior of <see cref="BsonValue.ToString" />).
+    /// </summary>
+    private static JToken NormalToJToken(BsonValue value) =>
+        value.IsBsonNull ? JValue.CreateNull() : new JValue(value.ToString());
+
+    private static JToken BsonValueToJToken(BsonValue value)
+    {
+        if (value.IsBsonNull)
+            return JValue.CreateNull();
+
+        switch (value.BsonType)
+        {
+            case BsonType.Array:
+            {
+                var arr = new JArray();
+                foreach (var item in value.AsBsonArray)
+                    arr.Add(BsonValueToJToken(item));
+                return arr;
+            }
+            case BsonType.Document:
+            {
+                var obj = new JObject();
+                foreach (var el in value.AsBsonDocument.Elements)
+                    obj[el.Name] = BsonValueToJToken(el.Value);
+                return obj;
+            }
+            case BsonType.Boolean:
+                return new JValue(value.AsBoolean);
+            case BsonType.DateTime:
+                return new JValue(value.ToUniversalTime());
+            case BsonType.Int32:
+                return new JValue(value.AsInt32);
+            case BsonType.Int64:
+                return new JValue(value.AsInt64);
+            case BsonType.Double:
+                return new JValue(value.AsDouble);
+            case BsonType.Decimal128:
+                return new JValue((decimal)value.AsDecimal128);
+            case BsonType.String:
+                return new JValue(value.AsString);
+            case BsonType.ObjectId:
+                return new JValue(value.AsObjectId.ToString());
+            case BsonType.Binary:
+                return new JValue(Convert.ToBase64String(value.AsBsonBinaryData.Bytes));
+            default:
+                return new JValue(value.ToString());
+        }
     }
 }

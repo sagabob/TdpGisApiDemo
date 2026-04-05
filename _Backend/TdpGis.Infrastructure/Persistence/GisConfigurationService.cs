@@ -33,8 +33,7 @@ public class GisConfigurationService(GisAppDbContext dbContext) : IGisConfigurat
         return await dbContext.GisConnections
             .AsNoTracking()
             .Include(x => x.PropertyMappings)
-            .Where(x => x.GisWorkspaceId == workspaceId && x.Id == entityId).FirstOrDefaultAsync();
-        ;
+            .Where(x => x.GisWorkspaceId == workspaceId && x.Id == entityId).FirstOrDefaultAsync(); ;
     }
 
 

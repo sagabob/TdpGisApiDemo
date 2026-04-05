@@ -10,6 +10,8 @@ public interface IMongoMetadataProvider
 
     Task<MongoDocumentSampleResult> GetSampleDocumentAsync(string connectionString, string collectionName,
         CancellationToken cancellationToken = default);
+
+    string GetDatabaseName(string connectionString);
 }
 
 public sealed record MongoConnectionProbeResult(
