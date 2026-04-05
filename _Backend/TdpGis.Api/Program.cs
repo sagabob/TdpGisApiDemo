@@ -4,6 +4,14 @@ using TdpGis.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddFastEndpoints()
@@ -19,6 +27,8 @@ builder.Services.AddFastEndpoints()
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 app.UseDefaultExceptionHandler()
     .UseFastEndpoints()
