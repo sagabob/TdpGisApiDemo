@@ -18,6 +18,9 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.Configure<AdminDashboardOptions>(builder.Configuration.GetSection(AdminDashboardOptions.SectionName));
 
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddTdpGisEndpointsDataProtection();
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -33,7 +36,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 builder.Services.AddAdminApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 

@@ -1,9 +1,10 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TdpGis.Domain;
 
 namespace TdpGis.Infrastructure.Persistence;
 
-public class GisAppDbContext(DbContextOptions<GisAppDbContext> options) : DbContext(options)
+public class GisAppDbContext(DbContextOptions<GisAppDbContext> options) : DbContext(options), IDataProtectionKeyContext
 {
     public DbSet<DataSourceSetting> DataSourceSettings { get; set; }
 
@@ -14,6 +15,8 @@ public class GisAppDbContext(DbContextOptions<GisAppDbContext> options) : DbCont
     public DbSet<GisWorkspace> GisWorkspaces { get; set; }
 
     public DbSet<GisWorkspaceAccessToken> GisWorkspaceAccessTokens { get; set; }
+
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
