@@ -1,4 +1,4 @@
-namespace TdpGis.Infrastructure.Persistence;
+namespace TdpGis.Infrastructure.Helpers;
 
 /// <summary>
 ///     Npgsql maps PostgreSQL <c>timestamp with time zone</c> to .NET <see cref="DateTime" /> and requires UTC when
@@ -12,6 +12,7 @@ public static class DateTimeUtcForPostgreSql
         {
             DateTimeKind.Utc => value,
             DateTimeKind.Local => value.ToUniversalTime(),
+            // ReSharper disable once RedundantSwitchExpressionArms
             DateTimeKind.Unspecified => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime(),
             _ => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime()
         };

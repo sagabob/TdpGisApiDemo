@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TdpGis.Domain;
-using TdpGis.Infrastructure.Persistence;
+using TdpGis.Infrastructure.Helpers;
 
 namespace TdpGis.Infrastructure.Configurations;
 

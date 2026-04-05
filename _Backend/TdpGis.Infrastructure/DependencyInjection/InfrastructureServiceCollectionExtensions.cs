@@ -16,10 +16,12 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("Database")));
 
         services.AddScoped<IGisConfigurationRepository, GisConfigurationRepository>();
-        
+
         services.AddScoped<IGisConfigurationService, GisConfigurationService>();
 
         services.AddScoped<IMongoMetadataProvider, MongoMetadataProvider>();
+
+        services.AddScoped<IGisDataService, GisMongoDataService>();
 
         return services;
     }

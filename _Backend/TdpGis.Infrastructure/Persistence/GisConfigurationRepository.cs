@@ -2,12 +2,12 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Domain;
+using TdpGis.Infrastructure.Helpers;
 
 namespace TdpGis.Infrastructure.Persistence;
 
 public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigurationRepository
 {
-   
     public List<GisConnection> GetAllConnections()
     {
         return dbContext.GisConnections

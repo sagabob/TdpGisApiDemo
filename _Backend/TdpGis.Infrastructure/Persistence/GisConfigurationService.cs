@@ -28,6 +28,16 @@ public class GisConfigurationService(GisAppDbContext dbContext) : IGisConfigurat
             .ToList();
     }
 
+    public async Task<GisConnection?> GetGisConnectionDtoByEntityId(Guid entityId, Guid workspaceId)
+    {
+        return await dbContext.GisConnections
+            .AsNoTracking()
+            .Include(x => x.PropertyMappings)
+            .Where(x => x.GisWorkspaceId == workspaceId && x.Id == entityId).FirstOrDefaultAsync();
+        ;
+    }
+
+
     public async Task<bool> HasEntityAsync(Guid workspaceId, Guid entityId)
     {
         return await dbContext.GisConnections
