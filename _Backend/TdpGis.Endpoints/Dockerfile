@@ -29,6 +29,11 @@ RUN dotnet publish "./TdpGis.Endpoints.csproj" -c $BUILD_CONFIGURATION -o /app/p
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
+# Npgsql can dlopen libgssapi_krb5 (Kerberos); slim runtime images omit it — required on Linux or PostgreSQL init fails.
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+USER $APP_UID
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "TdpGis.Endpoints.dll"]
