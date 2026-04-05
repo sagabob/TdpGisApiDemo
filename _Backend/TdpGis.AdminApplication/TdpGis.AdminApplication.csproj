@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TdpGis.Application\TdpGis.Application.csproj" />
     <ProjectReference Include="..\TdpGis.Domain\TdpGis.Domain.csproj" />
   </ItemGroup>
 
