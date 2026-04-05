@@ -24,7 +24,8 @@ public sealed class GetGisWorkspaceEntitiesEndpoint(IGisConfigurationService rep
 
     public override async Task HandleAsync(GetGisWorkspaceEntitiesRequest req, CancellationToken ct)
     {
-        var accessError = await GisWorkspaceAccess.TryValidateAsync(repository, req.WorkspaceId, HttpContext.Request, ct);
+        var accessError =
+            await GisWorkspaceAccess.TryValidateAsync(repository, req.WorkspaceId, HttpContext.Request, ct);
         if (accessError is { } err)
         {
             await HttpContext.Response.SendAsync(new { message = err.Message }, err.StatusCode, cancellation: ct);

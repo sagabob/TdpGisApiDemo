@@ -1,7 +1,7 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using Newtonsoft.Json.Linq;
 using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Application.Abstractions;
 using TdpGis.Domain;
@@ -11,7 +11,7 @@ namespace TdpGis.Infrastructure.Mongo;
 
 public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider) : IGisDataService
 {
-    public async Task<List<JObject>> GetSearchedInstances(GisConnection gisConnection, string searchText,
+    public async Task<List<JsonObject>> GetSearchedInstances(GisConnection gisConnection, string searchText,
         int maxResults, CancellationToken cancellationToken = default)
     {
         var connectionString = gisConnection.DataSource.ConnectionString.Trim();
@@ -21,9 +21,9 @@ public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider) :
 
         var collection = database.GetCollection<BsonDocument>(gisConnection.Entity);
 
-        var jObjects = new List<JObject>();
+        var rows = new List<JsonObject>();
 
-        if (collection == null) return jObjects;
+        if (collection == null) return rows;
 
         var queryExpr = new BsonRegularExpression(new Regex(searchText, RegexOptions.IgnoreCase));
 
@@ -31,8 +31,8 @@ public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider) :
 
         var bsonResults = await collection.Find(filterByText).Limit(maxResults).ToListAsync(cancellationToken);
 
-        bsonResults.ForEach(x => jObjects.Add(OutputMapping.ConvertFromBson(x, gisConnection.PropertyMappings)));
+        bsonResults.ForEach(x => rows.Add(OutputMapping.ConvertFromBson(x, gisConnection.PropertyMappings)));
 
-        return jObjects;
+        return rows;
     }
 }

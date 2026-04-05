@@ -4,7 +4,6 @@ namespace TdpGis.AdminApplication.Abstractions;
 
 public interface IGisConfigurationRepository
 {
-
     List<GisConnection> GetAllConnections();
 
     GisConnection? GetConnectionById(Guid id);

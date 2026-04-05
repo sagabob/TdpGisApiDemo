@@ -24,7 +24,10 @@ public class SearchGisEntityEndpoint(IGisConfigurationService repository, IGisDa
         var accessError =
             await GisWorkspaceAccess.TryValidateAsync(repository, req.WorkspaceId, HttpContext.Request, ct);
         if (accessError is { } err)
+        {
             await HttpContext.Response.SendAsync(new { message = err.Message }, err.StatusCode, cancellation: ct);
+            return;
+        }
 
         var selectedEntity = await repository.GetGisConnectionDtoByEntityId(req.WorkspaceId, req.EntityId);
 

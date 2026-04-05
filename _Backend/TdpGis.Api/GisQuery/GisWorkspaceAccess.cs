@@ -23,17 +23,12 @@ public static class GisWorkspaceAccess
 
         var accessToken = ResolveAccessToken(request);
         if (string.IsNullOrWhiteSpace(accessToken))
-        {
             return (
                 $"Provide header '{AccessTokenHeader}', or Authorization: Bearer (access token value).",
                 400);
-        }
 
         var validToken = await repository.GetValidWorkspaceAccessTokenAsync(workspaceId, accessToken, ct);
-        if (validToken is null)
-        {
-            return ("Invalid workspace, access token, or token is inactive or expired.", 401);
-        }
+        if (validToken is null) return ("Invalid workspace, access token, or token is inactive or expired.", 401);
 
         return null;
     }
