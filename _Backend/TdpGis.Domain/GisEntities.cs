@@ -1,4 +1,4 @@
-namespace TdpGis.Domains;
+namespace TdpGis.Domain;
 
 public class GisConnection
 {

@@ -1,0 +1,977 @@
+@using System.Globalization
+@model GisConnectionPageViewModel
+@{
+    ViewData["Title"] = "Query Configuration";
+    var configSuccessMessage = TempData["SuccessMessage"] as string;
+    var configNewAccessTokenPlain = TempData["CreatedAccessTokenPlain"] as string;
+    var forceGisConfigTab = Model.Form.GisConnectionId.HasValue && Model.Form.GisConnectionId.Value != Guid.Empty;
+
+    static string MaskConnectionString(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var schemeIndex = value.IndexOf("://", StringComparison.Ordinal);
+        if (schemeIndex < 0)
+        {
+            return value;
+        }
+
+        var atIndex = value.IndexOf('@', schemeIndex + 3);
+        if (atIndex < 0)
+        {
+            return value;
+        }
+
+        var credentials = value.Substring(schemeIndex + 3, atIndex - (schemeIndex + 3));
+        var colonIndex = credentials.IndexOf(':');
+        if (colonIndex < 0)
+        {
+            return value;
+        }
+
+        var user = credentials.Substring(0, colonIndex);
+        var maskedCredentials = $"{user}:******";
+        return value.Substring(0, schemeIndex + 3) + maskedCredentials + value.Substring(atIndex);
+    }
+}
+
+<div class="row g-4">
+<div class="col-lg-8">
+<h1 class="h3">GIS Configuration</h1>
+<p class="text-muted">MongoDB connections, GIS entities, and workspaces with access tokens.</p>
+
+@if (!string.IsNullOrEmpty(configSuccessMessage) && string.IsNullOrEmpty(configNewAccessTokenPlain))
+{
+    <div class="alert alert-success" role="alert">@configSuccessMessage</div>
+}
+
+<ul class="nav nav-tabs mb-3" id="configTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="mongo-tab" data-bs-toggle="tab" data-bs-target="#mongo-tab-pane" type="button" role="tab">1. MongoDB</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="gis-tab" data-bs-toggle="tab" data-bs-target="#gis-tab-pane" type="button" role="tab">2. GIS connection</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="workspace-tab" data-bs-toggle="tab" data-bs-target="#workspace-tab-pane" type="button" role="tab">3. Workspace &amp; token</button>
+    </li>
+</ul>
+
+<div class="tab-content border border-top-0 rounded-bottom p-3 bg-white">
+<div class="tab-pane fade show active" id="mongo-tab-pane" role="tabpanel" aria-labelledby="mongo-tab">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h6 mb-0">Saved MongoDB Connections</h2>
+                <span class="badge text-bg-primary">@Model.SavedMongoConnections.Count</span>
+            </div>
+            <label class="form-label">Review Saved Connections</label>
+            <select class="form-select" id="savedConnectionsReviewSelect">
+                @if (Model.SavedMongoConnections.Count == 0)
+                {
+                    <option value="">No saved connections</option>
+                }
+                else
+                {
+                    @foreach (var ds in Model.SavedMongoConnections)
+                    {
+                        <option value="@ds.Id">@MaskConnectionString(ds.ConnectionString)</option>
+                    }
+                }
+            </select>
+            <small class="text-muted">Passwords are masked in this view.</small>
+        </div>
+    </div>
+
+    <form asp-action="SaveMongoConnection" method="post">
+        @Html.AntiForgeryToken()
+        <div class="mb-3">
+            <label asp-for="MongoForm.ConnectionString" class="form-label"></label>
+            <textarea asp-for="MongoForm.ConnectionString" class="form-control" rows="3" placeholder="mongodb://localhost:27017/your-database"></textarea>
+            <small class="text-muted">Include database in URL path: mongodb://.../&lt;database&gt;</small>
+            <span asp-validation-for="MongoForm.ConnectionString" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center mb-3">
+            <button type="button" class="btn btn-outline-primary" id="validateMongoBtn">Validate MongoDB</button>
+            <span id="mongoStatus" class="small text-muted"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save MongoDB Connection</button>
+    </form>
+</div>
+
+<div class="tab-pane fade" id="gis-tab-pane" role="tabpanel" aria-labelledby="gis-tab" data-force-gis-tab="@(forceGisConfigTab ? "true" : null)">
+    <form asp-action="SaveGisConnection" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Form.GisConnectionId"/>
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label class="form-label" for="gisConnectionPicker">GIS connection</label>
+            <select class="form-select" id="gisConnectionPicker">
+                <option value="">Create new GIS connection</option>
+                @foreach (var gc in Model.ExistingConnections)
+                {
+                    if (Model.Form.GisConnectionId == gc.Id)
+                    {
+                        <option value="@gc.Id" selected>@gc.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@gc.Id">@gc.Name</option>
+                    }
+                }
+            </select>
+            <small class="text-muted">Choose an existing connection to edit its settings, or create new and fill the form below.</small>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Form.DataSourceId" class="form-label"></label>
+            <select asp-for="Form.DataSourceId" class="form-select" id="dataSourceSelect">
+                <option value="">Select saved MongoDB connection</option>
+                @foreach (var ds in Model.SavedMongoConnections)
+                {
+                    <option value="@ds.Id">@MaskConnectionString(ds.ConnectionString)</option>
+                }
+            </select>
+            <span asp-validation-for="Form.DataSourceId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Form.Entity" class="form-label"></label>
+            <select asp-for="Form.Entity" class="form-select" id="entitySelect" data-current-value="@Model.Form.Entity" disabled>
+                <option value="">Select saved connection first</option>
+            </select>
+            <span asp-validation-for="Form.Entity" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label mb-1">Sample Document</label>
+            <pre id="sampleDocPreview" class="p-3 border rounded bg-light" style="max-height: 260px; overflow: auto;">Select a connection and collection to preview one record.</pre>
+            <div id="sampleFields" class="small text-muted"></div>
+        </div>
+
+        <hr/>
+
+        <div class="mb-3">
+            <label asp-for="Form.Name" class="form-label"></label>
+            <input asp-for="Form.Name" class="form-control"/>
+            <span asp-validation-for="Form.Name" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Form.Description" class="form-label"></label>
+            <textarea asp-for="Form.Description" class="form-control" rows="2"></textarea>
+            <span asp-validation-for="Form.Description" class="text-danger"></span>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="Form.EntityLabel" class="form-label"></label>
+                <input asp-for="Form.EntityLabel" class="form-control"/>
+                <span asp-validation-for="Form.EntityLabel" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="Form.QueryField" class="form-label"></label>
+                <select asp-for="Form.QueryField" class="form-select" id="queryFieldSelect" data-current-value="@Model.Form.QueryField" disabled>
+                    <option value="">Select collection first</option>
+                </select>
+                <span asp-validation-for="Form.QueryField" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Form.GeometryType" class="form-label"></label>
+            <select asp-for="Form.GeometryType" class="form-select" asp-items="Html.GetEnumSelectList<GeometryType>()"></select>
+            <span asp-validation-for="Form.GeometryType" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Form.GisWorkspaceId" class="form-label"></label>
+            <select asp-for="Form.GisWorkspaceId" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var w in Model.Workspaces)
+                {
+                    <option value="@w.Id">@w.Name</option>
+                }
+            </select>
+            <small class="text-muted">Optional: attach this GIS entity to a workspace when saving.</small>
+            <span asp-validation-for="Form.GisWorkspaceId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Property Mappings</label>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <select id="mappingPropertySelect" class="form-select">
+                        <option value="">Select property</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input id="mappingDisplayNameInput" class="form-control" placeholder="Display name"/>
+                </div>
+                <div class="col-md-3">
+                    <select id="mappingTypeSelect" class="form-select">
+                        <option value="Normal">Normal</option>
+                        <option value="Object">Object</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-grid">
+                    <button type="button" class="btn btn-outline-primary" id="addSingleMappingBtn">Add</button>
+                </div>
+            </div>
+            <small class="text-muted d-block mt-1">Select property, type display name, choose type, then add.</small>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle">
+                    <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Display Name</th>
+                        <th>Type</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody id="mappingTableBody">
+                    <tr id="mappingEmptyRow">
+                        <td colspan="4" class="text-muted">No mappings added yet.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <textarea asp-for="Form.PropertyMappingsText" class="d-none"></textarea>
+            <span asp-validation-for="Form.PropertyMappingsText" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">@(forceGisConfigTab ? "Update GIS connection" : "Save GIS connection")</button>
+    </form>
+</div>
+
+<div class="tab-pane fade" id="workspace-tab-pane" role="tabpanel" aria-labelledby="workspace-tab" data-force-workspace-tab="@(!string.IsNullOrEmpty(configNewAccessTokenPlain) ? "true" : null)">
+    @if (!string.IsNullOrEmpty(configNewAccessTokenPlain))
+    {
+        @if (!string.IsNullOrEmpty(configSuccessMessage))
+        {
+            <div class="alert alert-success" role="alert">@configSuccessMessage</div>
+        }
+
+        <div class="alert alert-warning" role="alert">
+            <strong>New access token (copy now):</strong>
+            <pre class="mb-0 mt-2 p-2 bg-white border rounded small user-select-all">@configNewAccessTokenPlain</pre>
+        </div>
+    }
+    <h2 class="h6 mb-2">Workspace</h2>
+    <p class="text-muted small">Create a new workspace or pick an existing one to update its name.</p>
+    <form asp-action="SaveWorkspace" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        <div class="mb-3">
+            <label class="form-label" for="workspacePicker">Create or select workspace</label>
+            <select class="form-select" id="workspacePicker">
+                <option value="">Create new workspace</option>
+                @foreach (var w in Model.Workspaces)
+                {
+                    <option value="@w.Id" data-name="@w.Name">@w.Name</option>
+                }
+            </select>
+        </div>
+        <input type="hidden" asp-for="WorkspaceForm.WorkspaceId" id="workspaceForm_WorkspaceId"/>
+        <div class="mb-3">
+            <label asp-for="WorkspaceForm.Name" class="form-label"></label>
+            <input asp-for="WorkspaceForm.Name" class="form-control" id="workspaceForm_Name" autocomplete="off"/>
+            <span asp-validation-for="WorkspaceForm.Name" class="text-danger"></span>
+            <span asp-validation-for="WorkspaceForm.WorkspaceId" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary">Save workspace</button>
+    </form>
+
+    <hr class="my-4"/>
+
+    <h2 class="h6 mb-2">Add GIS entities to workspace</h2>
+    <p class="text-muted small">Assign existing GIS connections (entities) to a workspace. Choosing a workspace checks entities already linked to it; you can change the selection before saving.</p>
+    <form asp-action="AssignEntitiesToWorkspace" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        <div class="mb-3">
+            <label asp-for="AssignEntitiesForm.WorkspaceId" class="form-label"></label>
+            <select asp-for="AssignEntitiesForm.WorkspaceId" class="form-select" id="assignEntitiesWorkspaceSelect">
+                <option value="">Select workspace</option>
+                @foreach (var w in Model.Workspaces)
+                {
+                    <option value="@w.Id">@w.Name</option>
+                }
+            </select>
+            <span asp-validation-for="AssignEntitiesForm.WorkspaceId" class="text-danger"></span>
+        </div>
+        @if (Model.ExistingConnections.Count == 0)
+        {
+            <p class="text-muted small">No GIS entities exist yet. Create one in tab 2.</p>
+        }
+        else
+        {
+            var assignForm = Model.AssignEntitiesForm;
+            var postedIds = assignForm.SelectedConnectionIds;
+            var usePostedSelection = postedIds != null && postedIds.Count > 0;
+            <div class="mb-2">GIS entities</div>
+            <div id="assignEntitiesCheckboxList" class="border rounded p-3 mb-3" style="max-height: 220px; overflow-y: auto;">
+                @foreach (var c in Model.ExistingConnections)
+                {
+                    var isChecked = usePostedSelection
+                        ? postedIds!.Contains(c.Id)
+                        : assignForm.WorkspaceId != Guid.Empty && c.GisWorkspaceId == assignForm.WorkspaceId;
+                    <div class="form-check">
+                        <input class="form-check-input assign-entity-cb"
+                               type="checkbox"
+                               name="AssignEntitiesForm.SelectedConnectionIds"
+                               value="@c.Id"
+                               id="conn_@c.Id"
+                               data-entity-workspace="@(c.GisWorkspaceId?.ToString() ?? "")"
+                               @(isChecked ? "checked" : null)/>
+                        <label class="form-check-label" for="conn_@c.Id">
+                            @c.Name <span class="text-muted">(@c.Entity)</span>
+                        </label>
+                    </div>
+                }
+            </div>
+            <span asp-validation-for="AssignEntitiesForm.SelectedConnectionIds" class="text-danger d-block"></span>
+            <button type="submit" class="btn btn-outline-primary">Add selected to workspace</button>
+        }
+    </form>
+
+    <hr class="my-4"/>
+
+    <h2 class="h6 mb-2">Access token</h2>
+    <p class="text-muted small">Issue an opaque token for API access to a workspace. The secret is shown only once after creation.</p>
+    <form asp-action="CreateWorkspaceAccessToken" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="text-danger mb-2"></div>
+        <div class="mb-3">
+            <label asp-for="AccessTokenForm.WorkspaceId" class="form-label"></label>
+            <select asp-for="AccessTokenForm.WorkspaceId" class="form-select">
+                <option value="">Select workspace</option>
+                @foreach (var w in Model.Workspaces)
+                {
+                    <option value="@w.Id">@w.Name</option>
+                }
+            </select>
+            <span asp-validation-for="AccessTokenForm.WorkspaceId" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="AccessTokenForm.Name" class="form-label"></label>
+            <input asp-for="AccessTokenForm.Name" class="form-control" maxlength="200" autocomplete="off" placeholder="Label for this token"/>
+            <span asp-validation-for="AccessTokenForm.Name" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="AccessTokenForm.ExpiredDateTime" class="form-label"></label>
+            <input asp-for="AccessTokenForm.ExpiredDateTime" class="form-control" type="datetime-local" step="60"/>
+            <span asp-validation-for="AccessTokenForm.ExpiredDateTime" class="text-danger"></span>
+        </div>
+        <div class="mb-3 form-check">
+            <input asp-for="AccessTokenForm.IsActive" class="form-check-input"/>
+            <label asp-for="AccessTokenForm.IsActive" class="form-check-label"></label>
+        </div>
+        <div class="mb-3 form-check">
+            <input asp-for="AccessTokenForm.IsPublic" class="form-check-input"/>
+            <label asp-for="AccessTokenForm.IsPublic" class="form-check-label"></label>
+        </div>
+        <button type="submit" class="btn btn-primary">Create access token</button>
+    </form>
+
+    @{
+        var tokensWithWorkspace = Model.Workspaces
+            .SelectMany(w => w.AccessTokens.Select(t => (Workspace: w, Token: t)))
+            .OrderBy(x => x.Workspace.Name)
+            .ThenBy(x => x.Token.ExpiredDateTime)
+            .ToList();
+    }
+    @if (tokensWithWorkspace.Count > 0)
+    {
+        <hr class="my-4"/>
+        <h3 class="h6 mb-2">Existing access tokens</h3>
+        @if (Model.UpdateTokenForm != null)
+        {
+            <div asp-validation-summary="All" class="text-danger small mb-2"></div>
+        }
+
+        <p class="text-muted small">View token details; use <strong>Edit</strong> to change name, active, and public. Workspace and expiry are shown for reference only. The secret is never shown again after creation.</p>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+                <thead>
+                <tr>
+                    <th>Workspace</th>
+                    <th>Token id</th>
+                    <th>Expires</th>
+                    <th>Name</th>
+                    <th>Active</th>
+                    <th>Public</th>
+                    <th style="width: 1%;"></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in tokensWithWorkspace)
+                {
+                    var t = row.Token;
+                    var w = row.Workspace;
+                    var edit = Model.UpdateTokenForm != null && Model.UpdateTokenForm.TokenId == t.Id ? Model.UpdateTokenForm : null;
+                    var wsId = edit?.GisWorkspaceId ?? t.GisWorkspaceId;
+                    var nameVal = edit?.Name ?? t.Name;
+                    var expVal = edit?.ExpiredDateTime ?? t.ExpiredDateTime;
+                    var activeVal = edit?.IsActive ?? t.IsActive;
+                    var publicVal = edit?.IsPublic ?? t.IsPublic;
+                    var expLocal = expVal.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
+                    var isEditing = edit != null;
+                    var tokenIdStr = t.Id.ToString();
+                    <tr class="token-view-row @(isEditing ? "d-none" : "")" data-token-id="@tokenIdStr">
+                        <td>@w.Name</td>
+                        <td>
+                            <code class="small user-select-all">@t.Id</code>
+                        </td>
+                        <td class="text-nowrap">@expVal.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                        <td>@t.Name</td>
+                        <td>
+                            @if (t.IsActive)
+                            {
+                                <span class="badge text-bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">No</span>
+                            }
+                        </td>
+                        <td>
+                            @if (t.IsPublic)
+                            {
+                                <span class="badge text-bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">No</span>
+                            }
+                        </td>
+                        <td class="text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-edit-token" data-token-id="@tokenIdStr">Edit</button>
+                        </td>
+                    </tr>
+                    <tr class="token-edit-row @(isEditing ? "" : "d-none")" data-token-id="@tokenIdStr">
+                        <td colspan="7" class="bg-light p-3">
+                            <form asp-action="UpdateWorkspaceAccessToken" method="post" class="d-flex flex-wrap align-items-end gap-3">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="UpdateToken.TokenId" value="@t.Id"/>
+                                <input type="hidden" name="UpdateToken.GisWorkspaceId" value="@wsId"/>
+                                <input type="hidden" name="UpdateToken.ExpiredDateTime" value="@expLocal"/>
+                                <div class="small text-muted w-100 mb-1">Workspace: <strong>@w.Name</strong> · Expires: <strong>@expVal.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</strong></div>
+                                <div class="flex-grow-1" style="min-width: 12rem;">
+                                    <label class="form-label small mb-0" for="name_@t.Id">Name</label>
+                                    <input type="text" name="UpdateToken.Name" id="name_@t.Id" value="@nameVal" class="form-control form-control-sm" maxlength="200" autocomplete="off"/>
+                                </div>
+                                <div class="form-check m-0">
+                                    <input type="checkbox" name="UpdateToken.IsActive" value="true" class="form-check-input" id="active_@t.Id" @(activeVal ? "checked" : null)/>
+                                    <label class="form-check-label" for="active_@t.Id">Active</label>
+                                </div>
+                                <div class="form-check m-0">
+                                    <input type="checkbox" name="UpdateToken.IsPublic" value="true" class="form-check-input" id="public_@t.Id" @(publicVal ? "checked" : null)/>
+                                    <label class="form-check-label" for="public_@t.Id">Public</label>
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-cancel-token" data-token-id="@tokenIdStr">Cancel</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Model.Workspaces.Count > 0)
+    {
+        <hr class="my-4"/>
+        <h3 class="h6">Workspace summary</h3>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>GIS entities</th>
+                    <th>Tokens</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var w in Model.Workspaces)
+                {
+                    <tr>
+                        <td>@w.Name</td>
+                        <td>@w.Entities.Count</td>
+                        <td>@w.AccessTokens.Count</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+</div>
+</div>
+
+<div class="col-lg-4">
+    <h2 class="h5">Configured Entities</h2>
+    @if (Model.ExistingConnections.Count == 0)
+    {
+        <p class="text-muted">No entities configured yet.</p>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var item in Model.ExistingConnections)
+            {
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <strong>@item.Name</strong>
+                        <span class="badge text-bg-secondary">@item.GeometryType</span>
+                    </div>
+                    <div class="small text-muted">@item.EntityLabel (@item.Entity)</div>
+                    <div class="small mt-1">Query field: @item.QueryField</div>
+                    @if (item.GisWorkspace != null)
+                    {
+                        <div class="small mt-1">Workspace: <span class="text-dark">@item.GisWorkspace.Name</span></div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial"/>
+    <script>
+        (function () {
+            const validateBtn = document.getElementById('validateMongoBtn');
+            const statusEl = document.getElementById('mongoStatus');
+            const mongoConnectionEl = document.getElementById('MongoForm_ConnectionString');
+            const dataSourceSelect = document.getElementById('dataSourceSelect');
+            const entitySelect = document.getElementById('entitySelect');
+            const entityLabelEl = document.getElementById('Form_EntityLabel');
+            const queryFieldSelect = document.getElementById('queryFieldSelect');
+            const mappingTextEl = document.getElementById('Form_PropertyMappingsText');
+            const mappingPropertySelect = document.getElementById('mappingPropertySelect');
+            const mappingDisplayNameInput = document.getElementById('mappingDisplayNameInput');
+            const mappingTypeSelect = document.getElementById('mappingTypeSelect');
+            const addSingleMappingBtn = document.getElementById('addSingleMappingBtn');
+            const mappingTableBody = document.getElementById('mappingTableBody');
+            const samplePreviewEl = document.getElementById('sampleDocPreview');
+            const sampleFieldsEl = document.getElementById('sampleFields');
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const existingEntityValue = entitySelect.dataset.currentValue || '';
+            const existingQueryFieldValue = queryFieldSelect.dataset.currentValue || '';
+            let currentFields = [];
+            let mappingRows = [];
+
+            const gisConnectionPicker = document.getElementById('gisConnectionPicker');
+            if (gisConnectionPicker) {
+                gisConnectionPicker.addEventListener('change', function () {
+                    const v = gisConnectionPicker.value;
+                    const baseUrl = '@Url.Action("Configuration", "Home")';
+                    window.location.href = v ? baseUrl + '?gisEdit=' + encodeURIComponent(v) : baseUrl;
+                });
+            }
+
+            async function postJson(url, body) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': tokenInput ? tokenInput.value : ''
+                    },
+                    body: JSON.stringify(body)
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.message || 'Request failed.');
+                }
+                return payload;
+            }
+
+            function setStatus(message, isError) {
+                statusEl.textContent = message;
+                statusEl.classList.toggle('text-danger', !!isError);
+                statusEl.classList.toggle('text-success', !isError && message.length > 0);
+            }
+
+            function resetSample() {
+                currentFields = [];
+                samplePreviewEl.textContent = 'No sample loaded.';
+                sampleFieldsEl.textContent = '';
+                rebuildPropertyOptions();
+            }
+
+            function rebuildPropertyOptions() {
+                const selected = mappingPropertySelect.value;
+                mappingPropertySelect.innerHTML = '';
+                mappingPropertySelect.append(new Option('Select property', ''));
+                for (const field of currentFields) {
+                    mappingPropertySelect.append(new Option(field, field));
+                }
+                if (selected && currentFields.includes(selected)) {
+                    mappingPropertySelect.value = selected;
+                }
+            }
+
+            function syncMappingsToHidden() {
+                mappingTextEl.value = mappingRows
+                    .map(x => x.propertyName + '|' + x.propertyLabel + '|' + x.columnType)
+                    .join('\n');
+            }
+
+            function renderMappingTable() {
+                if (mappingRows.length === 0) {
+                    mappingTableBody.innerHTML = '<tr id="mappingEmptyRow"><td colspan="4" class="text-muted">No mappings added yet.</td></tr>';
+                    syncMappingsToHidden();
+                    return;
+                }
+
+                mappingTableBody.innerHTML = mappingRows
+                    .map((row, index) =>
+                        '<tr data-index="' + index + '">' +
+                        '<td>' + row.propertyName + '</td>' +
+                        '<td>' + row.propertyLabel + '</td>' +
+                        '<td>' + row.columnType + '</td>' +
+                        '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger remove-mapping-btn">Remove</button></td>' +
+                        '</tr>')
+                    .join('');
+                syncMappingsToHidden();
+            }
+
+            function addMapping(propertyName, propertyLabel, columnType) {
+                const normalizedName = (propertyName || '').trim();
+                const normalizedLabel = (propertyLabel || '').trim();
+                const normalizedType = (columnType || 'Normal').trim();
+                if (!normalizedName || !normalizedLabel) {
+                    return false;
+                }
+
+                const existingIndex = mappingRows.findIndex(x => x.propertyName.toLowerCase() === normalizedName.toLowerCase());
+                const mapping = { propertyName: normalizedName, propertyLabel: normalizedLabel, columnType: normalizedType };
+                if (existingIndex >= 0) {
+                    mappingRows[existingIndex] = mapping;
+                } else {
+                    mappingRows.push(mapping);
+                }
+                renderMappingTable();
+                return true;
+            }
+
+            function hydrateMappingsFromHidden() {
+                const lines = mappingTextEl.value.split('\n').map(x => x.trim()).filter(x => x.length > 0);
+                mappingRows = lines
+                    .map(line => {
+                        const parts = line.split('|');
+                        if (parts.length < 2) {
+                            return null;
+                        }
+                        return {
+                            propertyName: (parts[0] || '').trim(),
+                            propertyLabel: (parts[1] || '').trim(),
+                            columnType: (parts[2] || 'Normal').trim() || 'Normal'
+                        };
+                    })
+                    .filter(x => x);
+                renderMappingTable();
+            }
+
+            async function loadCollectionsForSavedConnection() {
+                const dataSourceId = dataSourceSelect.value;
+                entitySelect.innerHTML = '';
+                entitySelect.disabled = true;
+                resetSample();
+
+                if (!dataSourceId) {
+                    entitySelect.innerHTML = '<option value="">Select saved connection first</option>';
+                    queryFieldSelect.innerHTML = '<option value="">Select collection first</option>';
+                    queryFieldSelect.disabled = true;
+                    return;
+                }
+
+                entitySelect.innerHTML = '<option value="">Loading collections...</option>';
+                try {
+                    const result = await postJson('@Url.Action("GetCollectionsForSavedConnection", "Home")', { dataSourceId });
+                    const collections = result.collections || [];
+                    entitySelect.innerHTML = '';
+
+                    if (collections.length === 0) {
+                        entitySelect.innerHTML = '<option value="">No collections found</option>';
+                        queryFieldSelect.innerHTML = '<option value="">No fields available</option>';
+                        queryFieldSelect.disabled = true;
+                        return;
+                    }
+
+                    entitySelect.append(new Option('Select collection', ''));
+                    for (const name of collections) {
+                        entitySelect.append(new Option(name, name));
+                    }
+                    entitySelect.disabled = false;
+
+                    if (existingEntityValue && collections.includes(existingEntityValue)) {
+                        entitySelect.value = existingEntityValue;
+                        await loadSampleForCollection(existingEntityValue);
+                    }
+                } catch (error) {
+                    entitySelect.innerHTML = '<option value="">Failed to load collections</option>';
+                    samplePreviewEl.textContent = error.message;
+                }
+            }
+
+            async function loadSampleForCollection(collectionName) {
+                if (!collectionName || !dataSourceSelect.value) {
+                    resetSample();
+                    queryFieldSelect.innerHTML = '<option value="">Select collection first</option>';
+                    queryFieldSelect.disabled = true;
+                    return;
+                }
+
+                try {
+                    const sample = await postJson('@Url.Action("GetMongoSampleForSavedConnection", "Home")', {
+                        dataSourceId: dataSourceSelect.value,
+                        collectionName: collectionName
+                    });
+
+                    currentFields = sample.fields || [];
+                    rebuildPropertyOptions();
+                    const queryFields = currentFields.filter(x => typeof x === 'string' && !x.includes('.'));
+                    queryFieldSelect.innerHTML = '';
+                    if (queryFields.length === 0) {
+                        queryFieldSelect.innerHTML = '<option value="">No non-nested fields found</option>';
+                        queryFieldSelect.disabled = true;
+                    } else {
+                        queryFieldSelect.append(new Option('Select query field', ''));
+                        for (const field of queryFields) {
+                            queryFieldSelect.append(new Option(field, field));
+                        }
+                        queryFieldSelect.disabled = false;
+                    }
+                    samplePreviewEl.textContent = sample.sampleJson || '{}';
+                    sampleFieldsEl.textContent = currentFields.length > 0
+                        ? ('Fields: ' + currentFields.join(', '))
+                        : 'Collection is empty.';
+
+                    if (existingQueryFieldValue && queryFields.includes(existingQueryFieldValue)) {
+                        queryFieldSelect.value = existingQueryFieldValue;
+                    } else if (!queryFieldSelect.value && queryFields.length > 0) {
+                        queryFieldSelect.value = queryFields[0];
+                    }
+                } catch (error) {
+                    resetSample();
+                    queryFieldSelect.innerHTML = '<option value="">Failed to load fields</option>';
+                    queryFieldSelect.disabled = true;
+                    samplePreviewEl.textContent = error.message;
+                }
+            }
+
+            validateBtn.addEventListener('click', async function () {
+                const connectionString = mongoConnectionEl.value.trim();
+                if (!connectionString) {
+                    setStatus('Please enter a MongoDB connection string.', true);
+                    return;
+                }
+                try {
+                    const result = await postJson('@Url.Action("ValidateMongoConnection", "Home")', { connectionString });
+                    const total = (result.collections || []).length;
+                    setStatus('Valid connection. Found ' + total + ' collection(s).', false);
+                } catch (error) {
+                    setStatus(error.message, true);
+                }
+            });
+
+            dataSourceSelect.addEventListener('change', async function () {
+                await loadCollectionsForSavedConnection();
+            });
+
+            entitySelect.addEventListener('change', async function () {
+                const selected = entitySelect.value;
+                if (selected && !entityLabelEl.value) {
+                    entityLabelEl.value = selected;
+                }
+                await loadSampleForCollection(selected);
+            });
+
+            addSingleMappingBtn.addEventListener('click', function () {
+                const prop = mappingPropertySelect.value;
+                if (!prop) {
+                    return;
+                }
+                const label = mappingDisplayNameInput.value.trim() || prop;
+                const type = mappingTypeSelect.value;
+                addMapping(prop, label, type);
+                mappingDisplayNameInput.value = '';
+                mappingTypeSelect.value = 'Normal';
+            });
+
+            mappingPropertySelect.addEventListener('change', function () {
+                if (!mappingDisplayNameInput.value.trim() && mappingPropertySelect.value) {
+                    mappingDisplayNameInput.value = mappingPropertySelect.value;
+                }
+            });
+
+            mappingTableBody.addEventListener('click', function (event) {
+                const target = event.target;
+                if (!(target instanceof HTMLElement) || !target.classList.contains('remove-mapping-btn')) {
+                    return;
+                }
+                const row = target.closest('tr');
+                if (!row) {
+                    return;
+                }
+                const index = Number(row.getAttribute('data-index'));
+                if (Number.isNaN(index) || index < 0 || index >= mappingRows.length) {
+                    return;
+                }
+                mappingRows.splice(index, 1);
+                renderMappingTable();
+            });
+
+            hydrateMappingsFromHidden();
+            rebuildPropertyOptions();
+
+            if (dataSourceSelect.value) {
+                loadCollectionsForSavedConnection();
+            }
+
+            const workspacePicker = document.getElementById('workspacePicker');
+            const workspaceIdHidden = document.getElementById('workspaceForm_WorkspaceId');
+            const workspaceNameInput = document.getElementById('workspaceForm_Name');
+            if (workspacePicker && workspaceIdHidden && workspaceNameInput) {
+                workspacePicker.addEventListener('change', function () {
+                    const opt = workspacePicker.selectedOptions[0];
+                    if (!workspacePicker.value) {
+                        workspaceIdHidden.value = '';
+                        workspaceNameInput.value = '';
+                        return;
+                    }
+                    workspaceIdHidden.value = workspacePicker.value;
+                    workspaceNameInput.value = opt.dataset.name || '';
+                });
+                if (workspaceIdHidden.value) {
+                    workspacePicker.value = workspaceIdHidden.value;
+                }
+            }
+
+            const assignEntitiesWorkspaceSelect = document.getElementById('assignEntitiesWorkspaceSelect');
+            const assignEntitiesCheckboxList = document.getElementById('assignEntitiesCheckboxList');
+
+            function syncAssignEntityCheckboxesToWorkspace() {
+                if (!assignEntitiesWorkspaceSelect || !assignEntitiesCheckboxList) {
+                    return;
+                }
+                const ws = assignEntitiesWorkspaceSelect.value || '';
+                assignEntitiesCheckboxList.querySelectorAll('input.assign-entity-cb').forEach(function (cb) {
+                    const entityWs = cb.getAttribute('data-entity-workspace') || '';
+                    cb.checked = ws !== '' && entityWs === ws;
+                });
+            }
+
+            if (assignEntitiesWorkspaceSelect && assignEntitiesCheckboxList) {
+                assignEntitiesWorkspaceSelect.addEventListener('change', syncAssignEntityCheckboxesToWorkspace);
+            }
+
+            function showAllTokenViewRows() {
+                document.querySelectorAll('.token-view-row').forEach(function (row) {
+                    row.classList.remove('d-none');
+                });
+                document.querySelectorAll('.token-edit-row').forEach(function (row) {
+                    row.classList.add('d-none');
+                });
+            }
+
+            function showTokenEditRow(tokenId) {
+                showAllTokenViewRows();
+                const viewRow = document.querySelector('.token-view-row[data-token-id="' + tokenId + '"]');
+                const editRow = document.querySelector('.token-edit-row[data-token-id="' + tokenId + '"]');
+                if (viewRow) {
+                    viewRow.classList.add('d-none');
+                }
+                if (editRow) {
+                    editRow.classList.remove('d-none');
+                }
+            }
+
+            document.querySelectorAll('.btn-edit-token').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const id = btn.getAttribute('data-token-id');
+                    if (id) {
+                        showTokenEditRow(id);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-cancel-token').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    showAllTokenViewRows();
+                });
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            var storageKey = 'tdpGisConfigActiveTab';
+            var tabList = document.getElementById('configTabs');
+            if (!tabList || typeof bootstrap === 'undefined') {
+                return;
+            }
+
+            function rememberTabFromPane(pane) {
+                if (pane && pane.id) {
+                    sessionStorage.setItem(storageKey, '#' + pane.id);
+                }
+            }
+
+            tabList.querySelectorAll('button[data-bs-toggle="tab"]').forEach(function (btn) {
+                btn.addEventListener('shown.bs.tab', function () {
+                    var target = btn.getAttribute('data-bs-target');
+                    if (target) {
+                        sessionStorage.setItem(storageKey, target);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.tab-content .tab-pane form').forEach(function (form) {
+                form.addEventListener('submit', function () {
+                    rememberTabFromPane(form.closest('.tab-pane'));
+                });
+            });
+
+            var wsPane = document.getElementById('workspace-tab-pane');
+            var forceWorkspace = wsPane && wsPane.getAttribute('data-force-workspace-tab') === 'true';
+            if (forceWorkspace) {
+                var wsTrigger = tabList.querySelector('button[data-bs-target="#workspace-tab-pane"]');
+                if (wsTrigger) {
+                    bootstrap.Tab.getOrCreateInstance(wsTrigger).show();
+                    sessionStorage.setItem(storageKey, '#workspace-tab-pane');
+                }
+            } else {
+                var gisPane = document.getElementById('gis-tab-pane');
+                var forceGis = gisPane && gisPane.getAttribute('data-force-gis-tab') === 'true';
+                if (forceGis) {
+                    var gisTrigger = tabList.querySelector('button[data-bs-target="#gis-tab-pane"]');
+                    if (gisTrigger) {
+                        bootstrap.Tab.getOrCreateInstance(gisTrigger).show();
+                        sessionStorage.setItem(storageKey, '#gis-tab-pane');
+                    }
+                } else {
+                    var saved = sessionStorage.getItem(storageKey);
+                    if (saved) {
+                        var trigger = tabList.querySelector('button[data-bs-target="' + saved + '"]');
+                        if (trigger) {
+                            bootstrap.Tab.getOrCreateInstance(trigger).show();
+                        }
+                    }
+                }
+            }
+        })();
+    </script>
+}
