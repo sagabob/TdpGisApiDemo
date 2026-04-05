@@ -1,8 +1,17 @@
 using FastEndpoints;
 using FastEndpoints.Swagger;
+using Microsoft.AspNetCore.HttpOverrides;
 using TdpGis.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Trust forwarded headers from platform load balancers (e.g. DigitalOcean App Platform).
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddCors(options =>
 {
@@ -26,7 +35,12 @@ builder.Services.AddFastEndpoints()
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+app.UseForwardedHeaders();
+
+// In Docker / behind a reverse proxy, Kestrel is HTTP-only; TLS is terminated upstream.
+// HttpsRedirection then has no local HTTPS port and logs a warning — skip it in Production.
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 
 app.UseCors();
 
