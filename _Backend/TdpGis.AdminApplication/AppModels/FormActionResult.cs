@@ -1,4 +1,4 @@
-namespace TdpGis.Application.Common;
+namespace TdpGis.AdminApplication.AppModels;
 
 public sealed class FormActionResult
 {
@@ -14,5 +14,8 @@ public sealed class FormActionResult
 
     public bool IsSuccess => FieldErrors.Count == 0 && string.IsNullOrEmpty(ModelOnlyError);
 
-    public void AddFieldError(string fieldKey, string message) => FieldErrors[fieldKey] = message;
+    public void AddFieldError(string fieldKey, string message)
+    {
+        FieldErrors[fieldKey] = message;
+    }
 }

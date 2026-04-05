@@ -1,7 +1,7 @@
-using TdpGis.Application.Common;
+using TdpGis.AdminApplication.AppModels;
 using TdpGis.Domain;
 
-namespace TdpGis.Application.Services;
+namespace TdpGis.AdminApplication.Services;
 
 public interface IGisAdminAppService
 {

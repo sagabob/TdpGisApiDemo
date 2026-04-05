@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
-using TdpGis.Application.DependencyInjection;
+using TdpGis.AdminApplication.DependencyInjection;
 using TdpGis.Endpoints.Options;
 using TdpGis.Infrastructure.DependencyInjection;
 
@@ -24,7 +24,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddApplication();
+builder.Services.AddAdminApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();

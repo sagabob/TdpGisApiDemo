@@ -1,4 +1,4 @@
-namespace TdpGis.Application.Abstractions;
+namespace TdpGis.AdminApplication.Abstractions;
 
 public interface IMongoMetadataProvider
 {

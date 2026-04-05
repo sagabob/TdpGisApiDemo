@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TdpGis.Application.Common;
-using TdpGis.Application.Services;
+using TdpGis.AdminApplication.AppModels;
+using TdpGis.AdminApplication.Services;
 using TdpGis.Endpoints.Models;
 
 namespace TdpGis.Endpoints.Controllers;
@@ -249,7 +249,8 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     public async Task<IActionResult> GetMongoSampleForSavedConnection([FromBody] SavedConnectionSampleRequest request,
         CancellationToken cancellationToken)
     {
-        var response = await gisAdmin.GetMongoSampleAsync(request.DataSourceId, request.CollectionName, cancellationToken);
+        var response =
+            await gisAdmin.GetMongoSampleAsync(request.DataSourceId, request.CollectionName, cancellationToken);
         if (!response.Ok)
             return BadRequest(new { message = response.Message });
 
@@ -268,16 +269,20 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
-    private GisConnectionPageViewModel BuildPageModel() =>
-        MapToPageViewModel(gisAdmin.GetConfigurationPageData());
+    private GisConnectionPageViewModel BuildPageModel()
+    {
+        return MapToPageViewModel(gisAdmin.GetConfigurationPageData());
+    }
 
-    private static GisConnectionPageViewModel MapToPageViewModel(GisConfigurationPageData data) =>
-        new()
+    private static GisConnectionPageViewModel MapToPageViewModel(GisConfigurationPageData data)
+    {
+        return new GisConnectionPageViewModel
         {
             ExistingConnections = data.ExistingConnections.ToList(),
             SavedMongoConnections = data.SavedMongoConnections.ToList(),
             Workspaces = data.Workspaces.ToList()
         };
+    }
 
     private static void MapFormStateToViewModel(GisConnectionFormViewModel form, GisConnectionFormState state)
     {

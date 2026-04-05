@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TdpGis.Application\TdpGis.Application.csproj" />
+    <ProjectReference Include="..\TdpGis.AdminApplication\TdpGis.AdminApplication.csproj" />
     <ProjectReference Include="..\TdpGis.Domain\TdpGis.Domain.csproj" />
     <ProjectReference Include="..\TdpGis.Infrastructure\TdpGis.Infrastructure.csproj" />
   </ItemGroup>

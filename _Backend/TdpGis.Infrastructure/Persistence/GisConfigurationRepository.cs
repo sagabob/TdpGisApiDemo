@@ -1,76 +1,13 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
-using TdpGis.Application.Abstractions;
-using TdpGis.Application.AppModels;
+using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Domain;
 
 namespace TdpGis.Infrastructure.Persistence;
 
 public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigurationRepository
 {
-    /// <summary>
-    ///     Npgsql requires UTC for <c>timestamp with time zone</c>. Form-bound dates are often Unspecified.
-    /// </summary>
-    private static DateTime ToUtcForStorage(DateTime value)
-    {
-        return value.Kind switch
-        {
-            DateTimeKind.Utc => value,
-            DateTimeKind.Local => value.ToUniversalTime(),
-            DateTimeKind.Unspecified => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime(),
-            _ => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime()
-        };
-    }
-
-    public List<GisConnectionDto> GetGisConnectionDtoByWorkspaceId(Guid workspaceId)
-    {
-        return dbContext.GisConnections
-            .AsNoTracking()
-            .Include(x => x.PropertyMappings)
-            .Where(x => x.GisWorkspaceId == workspaceId)
-            .OrderBy(x => x.Name)
-            .Select(x => new GisConnectionDto
-            {
-                Id = x.Id,
-                Name = x.Name,
-                Entity = x.Entity,
-                GeometryType = x.GeometryType,
-                QueryField = x.QueryField,
-                PropertyMappings = x.PropertyMappings.ToList(),
-                EntityLabel = x.EntityLabel,
-                Description = x.Description
-            })
-            .ToList();
-    }
-
-    public async Task<GisWorkspaceAccessToken?> GetValidWorkspaceAccessTokenAsync(
-        Guid workspaceId,
-        string accessToken,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(accessToken)) return null;
-
-        var trimmed = accessToken.Trim();
-        var now = DateTime.UtcNow;
-        return await dbContext.GisWorkspaceAccessTokens
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                t => t.GisWorkspaceId == workspaceId
-                     && t.AccessToken == trimmed
-                     && t.IsActive
-                     && t.ExpiredDateTime > now,
-                cancellationToken);
-    }
-
-    public GisConnection? GetQueryInstance(string queryName)
-    {
-        return dbContext.GisConnections
-            .AsNoTracking()
-            .Include(x => x.PropertyMappings)
-            .Include(x => x.DataSource)
-            .FirstOrDefault(x => x.Name == queryName);
-    }
-
+   
     public List<GisConnection> GetAllConnections()
     {
         return dbContext.GisConnections
@@ -278,7 +215,7 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
             GisWorkspaceId = workspaceId,
             Name = name.Trim(),
             AccessToken = GenerateOpaqueToken(),
-            ExpiredDateTime = ToUtcForStorage(expiredDateTime),
+            ExpiredDateTime = DateTimeUtcForPostgreSql.ToUtc(expiredDateTime),
             IsActive = isActive,
             IsPublic = isPublic,
             GisWorkspace = workspace
@@ -307,7 +244,7 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
 
         token.GisWorkspaceId = gisWorkspaceId;
         token.Name = name.Trim();
-        token.ExpiredDateTime = ToUtcForStorage(expiredDateTime);
+        token.ExpiredDateTime = DateTimeUtcForPostgreSql.ToUtc(expiredDateTime);
         token.IsActive = isActive;
         token.IsPublic = isPublic;
         await dbContext.SaveChangesAsync(cancellationToken);

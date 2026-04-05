@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Application.Abstractions;
 using TdpGis.Infrastructure.Mongo;
 using TdpGis.Infrastructure.Persistence;
@@ -15,6 +16,9 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("Database")));
 
         services.AddScoped<IGisConfigurationRepository, GisConfigurationRepository>();
+        
+        services.AddScoped<IGisConfigurationService, GisConfigurationService>();
+
         services.AddScoped<IMongoMetadataProvider, MongoMetadataProvider>();
 
         return services;

@@ -1,6 +1,6 @@
 using TdpGis.Domain;
 
-namespace TdpGis.Application.Services;
+namespace TdpGis.AdminApplication.AppModels;
 
 public sealed class GisConfigurationPageData
 {

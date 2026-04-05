@@ -1,7 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Driver;
-using TdpGis.Application.Abstractions;
+using TdpGis.AdminApplication.Abstractions;
 
 namespace TdpGis.Infrastructure.Mongo;
 
@@ -22,7 +22,9 @@ public sealed class MongoMetadataProvider : IMongoMetadataProvider
         {
             var client = new MongoClient(connectionString.Trim());
             var database = client.GetDatabase(resolvedDatabaseName);
-            var collections = await database.ListCollectionNames().ToListAsync(cancellationToken);
+            var collections =
+                await (await database.ListCollectionNamesAsync(cancellationToken: cancellationToken)).ToListAsync(
+                    cancellationToken);
             if (!string.IsNullOrWhiteSpace(collectionName) &&
                 !collections.Contains(collectionName.Trim(), StringComparer.Ordinal))
                 return new MongoConnectionProbeResult(false,
@@ -42,7 +44,8 @@ public sealed class MongoMetadataProvider : IMongoMetadataProvider
         var databaseName = GetDatabaseName(connectionString);
         var client = new MongoClient(connectionString.Trim());
         var database = client.GetDatabase(databaseName);
-        return await database.ListCollectionNames().ToListAsync(cancellationToken);
+        return await (await database.ListCollectionNamesAsync(cancellationToken: cancellationToken)).ToListAsync(
+            cancellationToken);
     }
 
     public async Task<MongoDocumentSampleResult> GetSampleDocumentAsync(string connectionString, string collectionName,

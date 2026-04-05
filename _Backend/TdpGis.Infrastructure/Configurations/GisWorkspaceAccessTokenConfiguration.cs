@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TdpGis.Domain;
+using TdpGis.Infrastructure.Persistence;
 
 namespace TdpGis.Infrastructure.Configurations;
 
@@ -21,7 +22,10 @@ public class GisWorkspaceAccessTokenConfiguration : IEntityTypeConfiguration<Gis
             .HasMaxLength(256);
 
         builder.Property(x => x.ExpiredDateTime)
-            .IsRequired();
+            .IsRequired()
+            .HasConversion(
+                v => DateTimeUtcForPostgreSql.ToUtc(v),
+                v => DateTimeUtcForPostgreSql.FromStore(v));
 
         builder.Property(x => x.IsActive)
             .IsRequired()

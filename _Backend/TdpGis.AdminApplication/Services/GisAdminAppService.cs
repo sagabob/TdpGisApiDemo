@@ -1,8 +1,8 @@
-using TdpGis.Application.Abstractions;
-using TdpGis.Application.Common;
+using TdpGis.AdminApplication.Abstractions;
+using TdpGis.AdminApplication.AppModels;
 using TdpGis.Domain;
 
-namespace TdpGis.Application.Services;
+namespace TdpGis.AdminApplication.Services;
 
 public sealed class GisAdminAppService(
     IGisConfigurationRepository repository,
@@ -18,7 +18,10 @@ public sealed class GisAdminAppService(
         };
     }
 
-    public GisConnection? GetGisConnectionById(Guid id) => repository.GetConnectionById(id);
+    public GisConnection? GetGisConnectionById(Guid id)
+    {
+        return repository.GetConnectionById(id);
+    }
 
     public void MapGisConnectionToForm(GisConnectionFormState form, GisConnection c)
     {
@@ -87,7 +90,8 @@ public sealed class GisAdminAppService(
         {
             var ws = repository.GetWorkspaceById(wid);
             if (ws is null)
-                result.AddFieldError(nameof(SaveGisConnectionInput.GisWorkspaceId), "Selected workspace was not found.");
+                result.AddFieldError(nameof(SaveGisConnectionInput.GisWorkspaceId),
+                    "Selected workspace was not found.");
         }
 
         var nameTrimmed = input.Name.Trim();
@@ -116,7 +120,8 @@ public sealed class GisAdminAppService(
                     cancellationToken);
                 if (updated is null)
                 {
-                    result.AddFieldError(nameof(SaveGisConnectionInput.GisConnectionId), "GIS connection was not found.");
+                    result.AddFieldError(nameof(SaveGisConnectionInput.GisConnectionId),
+                        "GIS connection was not found.");
                     return result;
                 }
 
