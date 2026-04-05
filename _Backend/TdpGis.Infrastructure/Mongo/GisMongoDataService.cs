@@ -9,14 +9,15 @@ using TdpGis.Infrastructure.Helpers;
 
 namespace TdpGis.Infrastructure.Mongo;
 
-public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider) : IGisDataService
+public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider, MongoClientCache mongoClients)
+    : IGisDataService
 {
     public async Task<List<JsonObject>> GetSearchedInstances(GisConnection gisConnection, string searchText,
         int maxResults, CancellationToken cancellationToken = default)
     {
         var connectionString = gisConnection.DataSource.ConnectionString.Trim();
         var resolvedDatabaseName = mongoMetadataProvider.GetDatabaseName(connectionString);
-        var client = new MongoClient(connectionString);
+        var client = mongoClients.GetOrCreate(connectionString);
         var database = client.GetDatabase(resolvedDatabaseName);
 
         var collection = database.GetCollection<BsonDocument>(gisConnection.Entity);

@@ -5,7 +5,7 @@ using TdpGis.AdminApplication.Abstractions;
 
 namespace TdpGis.Infrastructure.Mongo;
 
-public sealed class MongoMetadataProvider : IMongoMetadataProvider
+public sealed class MongoMetadataProvider(MongoClientCache mongoClients) : IMongoMetadataProvider
 {
     public async Task<MongoConnectionProbeResult> ProbeConnectionAsync(string connectionString, string? collectionName,
         CancellationToken cancellationToken = default)
@@ -20,7 +20,7 @@ public sealed class MongoMetadataProvider : IMongoMetadataProvider
 
         try
         {
-            var client = new MongoClient(connectionString.Trim());
+            var client = mongoClients.GetOrCreate(connectionString);
             var database = client.GetDatabase(resolvedDatabaseName);
             var collections =
                 await (await database.ListCollectionNamesAsync(cancellationToken: cancellationToken)).ToListAsync(
@@ -42,7 +42,7 @@ public sealed class MongoMetadataProvider : IMongoMetadataProvider
         CancellationToken cancellationToken = default)
     {
         var databaseName = GetDatabaseName(connectionString);
-        var client = new MongoClient(connectionString.Trim());
+        var client = mongoClients.GetOrCreate(connectionString);
         var database = client.GetDatabase(databaseName);
         return await (await database.ListCollectionNamesAsync(cancellationToken: cancellationToken)).ToListAsync(
             cancellationToken);
@@ -52,7 +52,7 @@ public sealed class MongoMetadataProvider : IMongoMetadataProvider
         CancellationToken cancellationToken = default)
     {
         var databaseName = GetDatabaseName(connectionString);
-        var client = new MongoClient(connectionString.Trim());
+        var client = mongoClients.GetOrCreate(connectionString);
         var database = client.GetDatabase(databaseName);
         var collection = database.GetCollection<BsonDocument>(collectionName.Trim());
         var sample = await collection.Find(FilterDefinition<BsonDocument>.Empty).Limit(1)
