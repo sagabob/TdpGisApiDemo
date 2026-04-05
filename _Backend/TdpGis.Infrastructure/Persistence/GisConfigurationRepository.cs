@@ -8,6 +8,20 @@ namespace TdpGis.Infrastructure.Persistence;
 
 public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigurationRepository
 {
+    /// <summary>
+    ///     Npgsql requires UTC for <c>timestamp with time zone</c>. Form-bound dates are often Unspecified.
+    /// </summary>
+    private static DateTime ToUtcForStorage(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime()
+        };
+    }
+
     public List<GisConnectionDto> GetGisConnectionDtoByWorkspaceId(Guid workspaceId)
     {
         return dbContext.GisConnections
@@ -264,7 +278,7 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
             GisWorkspaceId = workspaceId,
             Name = name.Trim(),
             AccessToken = GenerateOpaqueToken(),
-            ExpiredDateTime = expiredDateTime,
+            ExpiredDateTime = ToUtcForStorage(expiredDateTime),
             IsActive = isActive,
             IsPublic = isPublic,
             GisWorkspace = workspace
@@ -293,7 +307,7 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
 
         token.GisWorkspaceId = gisWorkspaceId;
         token.Name = name.Trim();
-        token.ExpiredDateTime = expiredDateTime;
+        token.ExpiredDateTime = ToUtcForStorage(expiredDateTime);
         token.IsActive = isActive;
         token.IsPublic = isPublic;
         await dbContext.SaveChangesAsync(cancellationToken);

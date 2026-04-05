@@ -12,7 +12,7 @@ public static class InfrastructureServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<GisAppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("Database")));
+            options.UseNpgsql(configuration.GetConnectionString("Database")));
 
         services.AddScoped<IGisConfigurationRepository, GisConfigurationRepository>();
         services.AddScoped<IMongoMetadataProvider, MongoMetadataProvider>();

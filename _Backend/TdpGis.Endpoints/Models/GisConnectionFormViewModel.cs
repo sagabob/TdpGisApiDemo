@@ -66,7 +66,7 @@ public class AccessTokenFormViewModel
     [Display(Name = "Name")]
     public string Name { get; set; } = string.Empty;
 
-    [Required] [Display(Name = "Expires")] public DateTime ExpiredDateTime { get; set; } = DateTime.UtcNow.AddDays(90);
+    [Required] [Display(Name = "Expires")] public DateTime ExpiredDateTime { get; set; } = DateTime.Today.AddDays(90);
 
     [Display(Name = "Active")] public bool IsActive { get; set; } = true;
 

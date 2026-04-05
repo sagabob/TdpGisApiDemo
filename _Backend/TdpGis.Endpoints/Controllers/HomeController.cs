@@ -167,7 +167,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
         var input = new CreateAccessTokenInput(
             model.WorkspaceId,
             model.Name,
-            model.ExpiredDateTime,
+            AccessTokenExpiryEndOfLocalDay(model.ExpiredDateTime),
             model.IsActive,
             model.IsPublic);
         var result = await gisAdmin.CreateWorkspaceAccessTokenAsync(input, cancellationToken);
@@ -203,7 +203,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
             model.TokenId,
             model.GisWorkspaceId,
             model.Name,
-            model.ExpiredDateTime,
+            AccessTokenExpiryEndOfLocalDay(model.ExpiredDateTime),
             model.IsActive,
             model.IsPublic);
         var result = await gisAdmin.UpdateWorkspaceAccessTokenAsync(input, cancellationToken);
@@ -291,6 +291,23 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
         form.GeometryType = state.GeometryType;
         form.GisWorkspaceId = state.GisWorkspaceId;
         form.PropertyMappingsText = state.PropertyMappingsText;
+    }
+
+    /// <summary>
+    ///     Maps a calendar date from the date-only picker to the last instant of that day in local time, so the token
+    ///     remains valid for the full selected day.
+    /// </summary>
+    private static DateTime AccessTokenExpiryEndOfLocalDay(DateTime selectedDate)
+    {
+        var localDate = selectedDate.Kind switch
+        {
+            DateTimeKind.Utc => selectedDate.ToLocalTime().Date,
+            DateTimeKind.Local => selectedDate.Date,
+            DateTimeKind.Unspecified => selectedDate.Date,
+            _ => selectedDate.Date
+        };
+        var startOfDay = DateTime.SpecifyKind(localDate, DateTimeKind.Local);
+        return startOfDay.AddDays(1).AddTicks(-1);
     }
 
     private void ApplyFormResultToModelState(FormActionResult result)

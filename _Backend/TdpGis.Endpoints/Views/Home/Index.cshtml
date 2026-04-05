@@ -36,6 +36,12 @@
         var maskedCredentials = $"{user}:******";
         return value.Substring(0, schemeIndex + 3) + maskedCredentials + value.Substring(atIndex);
     }
+
+    static string FormatAccessTokenExpiryDate(DateTime dt)
+    {
+        var local = dt.Kind == DateTimeKind.Utc ? dt.ToLocalTime() : dt;
+        return local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
 }
 
 <div class="row g-4">
@@ -368,7 +374,8 @@
         </div>
         <div class="mb-3">
             <label asp-for="AccessTokenForm.ExpiredDateTime" class="form-label"></label>
-            <input asp-for="AccessTokenForm.ExpiredDateTime" class="form-control" type="datetime-local" step="60"/>
+            <input asp-for="AccessTokenForm.ExpiredDateTime" class="form-control" type="date"/>
+            <small class="text-muted d-block">Valid through the end of the selected calendar day (your local time).</small>
             <span asp-validation-for="AccessTokenForm.ExpiredDateTime" class="text-danger"></span>
         </div>
         <div class="mb-3 form-check">
@@ -423,7 +430,7 @@
                     var expVal = edit?.ExpiredDateTime ?? t.ExpiredDateTime;
                     var activeVal = edit?.IsActive ?? t.IsActive;
                     var publicVal = edit?.IsPublic ?? t.IsPublic;
-                    var expLocal = expVal.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
+                    var expLocal = FormatAccessTokenExpiryDate(expVal);
                     var isEditing = edit != null;
                     var tokenIdStr = t.Id.ToString();
                     <tr class="token-view-row @(isEditing ? "d-none" : "")" data-token-id="@tokenIdStr">
@@ -431,7 +438,7 @@
                         <td>
                             <code class="small user-select-all">@t.Id</code>
                         </td>
-                        <td class="text-nowrap">@expVal.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                        <td class="text-nowrap">@FormatAccessTokenExpiryDate(expVal)</td>
                         <td>@t.Name</td>
                         <td>
                             @if (t.IsActive)
@@ -464,7 +471,7 @@
                                 <input type="hidden" name="UpdateToken.TokenId" value="@t.Id"/>
                                 <input type="hidden" name="UpdateToken.GisWorkspaceId" value="@wsId"/>
                                 <input type="hidden" name="UpdateToken.ExpiredDateTime" value="@expLocal"/>
-                                <div class="small text-muted w-100 mb-1">Workspace: <strong>@w.Name</strong> · Expires: <strong>@expVal.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</strong></div>
+                                <div class="small text-muted w-100 mb-1">Workspace: <strong>@w.Name</strong> · Expires: <strong>@FormatAccessTokenExpiryDate(expVal)</strong></div>
                                 <div class="flex-grow-1" style="min-width: 12rem;">
                                     <label class="form-label small mb-0" for="name_@t.Id">Name</label>
                                     <input type="text" name="UpdateToken.Name" id="name_@t.Id" value="@nameVal" class="form-control form-control-sm" maxlength="200" autocomplete="off"/>
