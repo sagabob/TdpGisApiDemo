@@ -20,7 +20,8 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 
-app.UseFastEndpoints()
+app.UseDefaultExceptionHandler()
+    .UseFastEndpoints()
     .UseSwaggerGen();
 
 app.Run();

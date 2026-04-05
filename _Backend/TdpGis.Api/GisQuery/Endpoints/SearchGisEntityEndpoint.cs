@@ -31,7 +31,7 @@ public class SearchGisEntityEndpoint(IGisConfigurationService repository, IGisDa
 
         if (selectedEntity != null)
         {
-            var result = dataService.GetSearchedInstances(selectedEntity, req.SearchedPhrase, 10);
+            var result = await dataService.GetSearchedInstances(selectedEntity, req.SearchedPhrase, 10, ct);
 
             // TODO: implement GIS entity search against Mongo using workspace/entity configuration.
             await HttpContext.Response.SendAsync(
