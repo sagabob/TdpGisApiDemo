@@ -1,9 +1,17 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using TdpGis.AdminApplication.DependencyInjection;
 using TdpGis.Endpoints.Options;
 using TdpGis.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -29,6 +37,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -37,7 +47,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// In Docker / behind a reverse proxy, Kestrel is HTTP-only; TLS is at the edge. Skip redirect in Production to avoid
+// "Failed to determine the https port" and rely on the platform URL being HTTPS.
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
 app.UseRouting();
 
 app.UseAuthentication();
