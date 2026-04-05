@@ -5,9 +5,18 @@ namespace TdpGis.Application.Abstractions;
 
 public interface IGisConfigurationRepository
 {
-    Dictionary<string, GisConnection> QueryInstances { get; }
+    /// <summary>
+    ///     GIS connections assigned to the workspace, as public DTOs (no connection strings).
+    /// </summary>
+    List<GisConnectionDto> GetGisConnectionDtoByWorkspaceId(Guid workspaceId);
 
-    List<GisConnectionDto> GetQueryConfigDto();
+    /// <summary>
+    ///     Returns the access token row if it matches the workspace, secret, is active, and not expired.
+    /// </summary>
+    Task<GisWorkspaceAccessToken?> GetValidWorkspaceAccessTokenAsync(
+        Guid workspaceId,
+        string accessToken,
+        CancellationToken cancellationToken = default);
 
     GisConnection? GetQueryInstance(string queryName);
 

@@ -8,21 +8,18 @@ namespace TdpGis.Infrastructure.Persistence;
 
 public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigurationRepository
 {
-    public Dictionary<string, GisConnection> QueryInstances =>
-        dbContext.GisConnections
-            .AsNoTracking()
-            .Include(x => x.PropertyMappings)
-            .Include(x => x.DataSource)
-            .ToDictionary(x => x.Name, x => x);
-
-    public List<GisConnectionDto> GetQueryConfigDto()
+    public List<GisConnectionDto> GetGisConnectionDtoByWorkspaceId(Guid workspaceId)
     {
         return dbContext.GisConnections
             .AsNoTracking()
+            .Include(x => x.PropertyMappings)
+            .Where(x => x.GisWorkspaceId == workspaceId)
+            .OrderBy(x => x.Name)
             .Select(x => new GisConnectionDto
             {
                 Id = x.Id,
                 Name = x.Name,
+                Entity = x.Entity,
                 GeometryType = x.GeometryType,
                 QueryField = x.QueryField,
                 PropertyMappings = x.PropertyMappings.ToList(),
@@ -30,6 +27,25 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
                 Description = x.Description
             })
             .ToList();
+    }
+
+    public async Task<GisWorkspaceAccessToken?> GetValidWorkspaceAccessTokenAsync(
+        Guid workspaceId,
+        string accessToken,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken)) return null;
+
+        var trimmed = accessToken.Trim();
+        var now = DateTime.UtcNow;
+        return await dbContext.GisWorkspaceAccessTokens
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                t => t.GisWorkspaceId == workspaceId
+                     && t.AccessToken == trimmed
+                     && t.IsActive
+                     && t.ExpiredDateTime > now,
+                cancellationToken);
     }
 
     public GisConnection? GetQueryInstance(string queryName)
