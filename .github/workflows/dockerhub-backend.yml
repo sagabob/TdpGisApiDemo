@@ -1,0 +1,71 @@
+name: Build and Publish Docker Hub Images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Full image names, e.g. dockerhub-user/tdpgis-endpoints and dockerhub-user/tdpgis-api
+  IMAGE_ENDPOINTS: ${{ vars.DOCKERHUB_IMAGE_ENDPOINTS }}
+  IMAGE_API: ${{ vars.DOCKERHUB_IMAGE_API }}
+
+jobs:
+  dockerhub:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate datetime tag
+        id: dt
+        run: echo "value=$(date -u +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+
+      - name: Extract Docker metadata (TdpGis.Endpoints)
+        id: meta_endpoints
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_ENDPOINTS }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.dt.outputs.value }}
+
+      - name: Build and push TdpGis.Endpoints
+        uses: docker/build-push-action@v6
+        with:
+          context: ./_Backend
+          file: ./_Backend/TdpGis.Endpoints/Dockerfile
+          push: true
+          tags: ${{ steps.meta_endpoints.outputs.tags }}
+          labels: ${{ steps.meta_endpoints.outputs.labels }}
+
+      - name: Extract Docker metadata (TdpGis.Api)
+        id: meta_api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_API }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.dt.outputs.value }}
+
+      - name: Build and push TdpGis.Api
+        uses: docker/build-push-action@v6
+        with:
+          context: ./_Backend
+          file: ./_Backend/TdpGis.Api/Dockerfile
+          push: true
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
