@@ -36,4 +36,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-
 USER $APP_UID
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Listen on all IPv4 interfaces so platform load balancers (often IPv4) can reach the container. Port must match DO ingress (usually 8080).
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 ENTRYPOINT ["dotnet", "TdpGis.Endpoints.dll"]
