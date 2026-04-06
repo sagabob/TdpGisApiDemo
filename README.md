@@ -4,6 +4,13 @@ Sample **ASP.NET Core** solution for managing **MongoDB** data sources, **GIS co
 
 The backend exposes two hosts: a **cookie-authenticated MVC admin** (`TdpGis.Endpoints`) and a **FastEndpoints REST API** (`TdpGis.Api`) secured by workspace access tokens for GIS queries.
 
+### Live demo (DigitalOcean App Platform)
+
+| App | URL |
+|-----|-----|
+| **Admin UI** (`TdpGis.Endpoints`) | [https://seal-app-q3vt5.ondigitalocean.app/](https://seal-app-q3vt5.ondigitalocean.app/) |
+| **REST API** (`TdpGis.Api`; Swagger at `/swagger`) | [https://urchin-app-f57y9.ondigitalocean.app/](https://urchin-app-f57y9.ondigitalocean.app/) |
+
 ## Architecture (Clean Architecture)
 
 The backend follows **Clean Architecture** principles: **dependency direction points inward**. Outer layers depend on inner ones; the **domain** and **application** layers stay free of databases, HTTP, or UI frameworks.
@@ -26,9 +33,9 @@ All backend projects live under `_Backend/`:
 
 | Project | Description |
 |--------|-------------|
-| **TdpGis.Endpoints** | Runnable **MVC** app: Razor views, static assets, **cookie authentication** for the configuration UI. References **AdminApplication** and **Infrastructure**. Entry point: `Program.cs`. |
+| **TdpGis.Endpoints** | Runnable **MVC** app: Razor views, static assets, **cookie authentication** for the configuration UI. References **Domain**, **AdminApplication**, and **Infrastructure**. Entry point: `Program.cs`. |
 | **TdpGis.Api** | Runnable **FastEndpoints** host: GIS query endpoints, **Swagger/OpenAPI**. References **Application** and **Infrastructure**. Entry point: `Program.cs`. |
-| **TdpGis.Infrastructure** | EF Core **`GisAppDbContext`**, Fluent configurations, **migrations**, PostgreSQL access, **`GisConfigurationRepository`**, MongoDB helpers (`MongoClientCache`, `MongoMetadataProvider`, **`GisMongoDataService`**). |
+| **TdpGis.Infrastructure** | EF Core **`GisAppDbContext`**, Fluent configurations, **migrations**, PostgreSQL access, **`GisConfigurationRepository`**, MongoDB helpers (`MongoClientCache`, `MongoMetadataProvider`, **`GisMongoDataService`**). Registers **Data Protection** key persistence into the same database for the MVC host (see `EndpointsDataProtectionExtensions`). |
 | **TdpGis.AdminApplication** | **Admin** use cases and UI orchestration: **`IGisAdminAppService`** / **`GisAdminAppService`** for the configuration page. |
 | **TdpGis.Application** | **End-user** use cases: ports (**`IGisConfigurationService`**, **`IGisDataService`**, etc.) and shared app models/DTOs. |
 | **TdpGis.Domain** | Domain entities: data sources, GIS connections, property mappings, workspaces, access tokens. |
@@ -52,6 +59,8 @@ dotnet build _Backend/TdpGisApiDemo.slnx
 Set **`ConnectionStrings:Database`** to a valid PostgreSQL connection string. This applies to both **`TdpGis.Endpoints`** and **`TdpGis.Api`** (each has its own `appsettings`; use `appsettings.Development.json` locally or **environment variables** / **user secrets** for secrets).
 
 Base `appsettings.json` files may leave the connection string empty; ensure it is supplied at runtime (e.g. `ConnectionStrings__Database`).
+
+**Cookie auth keys:** The admin app stores **ASP.NET Data Protection** keys in PostgreSQL (`PersistKeysToDbContext<GisAppDbContext>`) so authentication cookies remain valid across container restarts without a file volume. Apply EF migrations **before** relying on login in production or Docker; the migrations include the Data Protection keys table.
 
 ### Admin dashboard sign-in (`TdpGis.Endpoints` only)
 
@@ -80,6 +89,8 @@ Or open `_Backend/TdpGisApiDemo.slnx` in Visual Studio / Rider and start **TdpGi
 
 Default URLs (see `Properties/launchSettings.json`): **https://localhost:7036** and **http://localhost:5291**.
 
+**Health checks** (anonymous; no cookie required): **`GET /health`** (liveness) and **`GET /health/ready`** (readiness, includes a database check). In Development, HTTPS redirection is skipped for `/health*` so plain HTTP probes work.
+
 Sign in at **`/Account/Login`**, then open the configuration hub.
 
 ## Run the REST API (`TdpGis.Api`)
@@ -90,6 +101,8 @@ dotnet run
 ```
 
 Default URLs (see `Properties/launchSettings.json`): **https://localhost:7255** and **http://localhost:5236**.
+
+**CORS** is enabled with a **default policy** that allows any origin, method, and header (useful for browser clients such as the optional `_Frontend` dev server).
 
 With the app running, open the **Swagger UI** (FastEndpoints + Swagger) at **`/swagger`** on that host.
 
@@ -112,7 +125,9 @@ GIS endpoints require a **valid workspace access token**: header **`X-Access-Tok
 
 Tab **2 (GIS connection)** supports editing an existing GIS connection via the picker and **`?gisEdit={guid}`**.
 
-The GIS tab uses JSON POST actions on **`HomeController`** (e.g. `ValidateMongoConnection`, `GetCollectionsForSavedConnection`, `GetMongoSampleForSavedConnection`) with **anti-forgery** tokens.
+**Form POSTs** on the configuration page target **`HomeController`** actions (with **`[ValidateAntiForgeryToken]`** where applicable): `SaveMongoConnection`, `SaveGisConnection`, `AssignEntitiesToWorkspace`, `SaveWorkspace`, `CreateWorkspaceAccessToken`, `UpdateWorkspaceAccessToken`.
+
+The GIS tab also invokes JSON **POST** actions on **`HomeController`**: `ValidateMongoConnection`, `GetCollectionsForSavedConnection`, `GetMongoSampleForSavedConnection` (called from `Index.cshtml` via `fetch`).
 
 ## Frontends
 
@@ -122,7 +137,7 @@ The admin UI is **ASP.NET Core MVC**: Razor views under **`_Backend/TdpGis.Endpo
 
 ### Optional SPA (`_Frontend/`)
 
-There is a separate **Vite + React** app (Mapbox-related dependencies) under **`_Frontend/`**. It is not part of the .NET solution; run it with **`npm install`** and **`npm run dev`** (see `package.json`) if you are consuming the REST API from a browser client.
+There is a separate **Vite + React** app under **`_Frontend/`** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **TanStack Router**, **Axios**). It is not part of the .NET solution; run **`npm install`** then **`npm run dev`** (see `_Frontend/package.json`) when calling the REST API from a browser during development.
 
 ## Features (summary)
 
