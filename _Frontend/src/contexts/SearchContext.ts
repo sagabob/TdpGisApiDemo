@@ -1,4 +1,5 @@
 import { createContext, type Dispatch, type SetStateAction } from "react";
+import type { GisConnectionDto } from "@/types/gisWorkspace";
 
 export type Position = {
     longitude: number;
@@ -14,6 +15,9 @@ export type GeoFeature = {
         type: string;
         coordinates: number[][]; // Usually [[longitude, latitude], ...] dependent on the shape
     };
+    /** Workspace GIS entity (connection) this hit belongs to — set for workspace search results. */
+    sourceEntityId?: string;
+    sourceEntityLabel?: string;
     [key: string]: any;
 }
 
@@ -31,6 +35,13 @@ export interface SearchContextType {
     getGeoData: Dispatch<SetStateAction<GeoDataResult | null>>;
     selectedGeo: GeoFeature | null;
     setSelectedGeo: Dispatch<SetStateAction<GeoFeature | null>>;
+    workspaceEntities: GisConnectionDto[] | null;
+    workspaceEntitiesLoading: boolean;
+    workspaceEntitiesError: string | null;
+    /** GIS connection ids the user wants to include in search (subset of workspace entities). */
+    selectedEntityIds: string[];
+    toggleEntitySelection: (entityId: string) => void;
+    setSelectedEntityIds: Dispatch<SetStateAction<string[]>>;
 }
 
 const SearchContext = createContext<SearchContextType>({} as SearchContextType);

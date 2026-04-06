@@ -1,17 +1,30 @@
-import Map, { Marker, NavigationControl, Popup, ScaleControl } from 'react-map-gl/mapbox';
+import Map, { Marker, NavigationControl, Popup, ScaleControl, type MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { mapboxAccessToken, selectedPinColor } from '@/config/gis-config';
-import { useContext } from 'react';
+import { useCallback, useContext, useRef } from 'react';
 import SearchContext from '@/contexts/SearchContext';
 import Pin from '@/components/maps/Pin';
 
 export const GisMap = () => {
     const { loadedGeoData, selectedGeo, setSelectedGeo, initialPosition, setPosition } = useContext(SearchContext);
+    const mapRef = useRef<MapRef>(null);
+
+    const handleLoad = useCallback(() => {
+        // Container can be 0×0 on first layout; force Mapbox to match the final flex/absolute box.
+        requestAnimationFrame(() => {
+            mapRef.current?.resize();
+        });
+    }, []);
+
     return (
-        <Map   {...initialPosition}
+        <div className="h-full min-h-0 w-full">
+        <Map
+            ref={mapRef}
+            {...initialPosition}
             mapboxAccessToken={mapboxAccessToken}
             style={{ width: "100%", height: "100%" }}
             mapStyle="mapbox://styles/mapbox/streets-v9"
+            onLoad={handleLoad}
             onMove={evt => setPosition(evt.viewState)}
         >
             {loadedGeoData !== null && loadedGeoData.results !== undefined && Array.isArray(loadedGeoData.results) && loadedGeoData.results.map((item) =>
@@ -59,7 +72,14 @@ export const GisMap = () => {
                 >
                     <div>
                         <h5 className="font-semibold text-sm text-slate-800 m-0">{selectedGeo.placeName}</h5>
-                        <p className="text-xs text-slate-500 m-0 mt-1">{selectedGeo.locality}</p>
+                        {selectedGeo.locality ? (
+                            <p className="text-xs text-slate-500 m-0 mt-1">{selectedGeo.locality}</p>
+                        ) : null}
+                        {selectedGeo.sourceEntityLabel ? (
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 m-0 mt-1.5">
+                                {selectedGeo.sourceEntityLabel}
+                            </p>
+                        ) : null}
                     </div>
 
                 </Popup>)
@@ -67,5 +87,6 @@ export const GisMap = () => {
             <NavigationControl />
             <ScaleControl />
         </Map>
+        </div>
     );
 }
