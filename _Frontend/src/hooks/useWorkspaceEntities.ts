@@ -23,6 +23,7 @@ function getErrorMessage(err: unknown): string {
 }
 
 export function useWorkspaceEntities() {
+  // Seed from session storage to avoid a loading flash and extra roundtrip on refresh.
   const [workspaceEntities, setWorkspaceEntities] = useState<GisConnectionDto[] | null>(() =>
     readWorkspaceEntitiesFromSession(),
   );
@@ -31,6 +32,7 @@ export function useWorkspaceEntities() {
   );
   const [workspaceEntitiesError, setWorkspaceEntitiesError] = useState<string | null>(null);
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
+  // Prevents re-selecting all entities on every render/update after user changes selection.
   const hasSeededSelection = useRef(false);
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export function useWorkspaceEntities() {
       .then((list) => {
         setWorkspaceEntitiesError(null);
         setWorkspaceEntities(list);
+        // Keep a short-lived cache for faster subsequent visits in the same tab/session.
         writeWorkspaceEntitiesToSession(list);
       })
       .catch((err: unknown) => {
@@ -65,10 +68,12 @@ export function useWorkspaceEntities() {
       workspaceEntities.length > 0 &&
       !hasSeededSelection.current
     ) {
+      // First successful load selects all entities by default so search "just works".
       setSelectedEntityIds(workspaceEntities.map((e) => e.id));
       hasSeededSelection.current = true;
     }
     if (!workspaceEntities?.length) {
+      // Reset selection state when list is unavailable (error/empty response).
       hasSeededSelection.current = false;
       setSelectedEntityIds([]);
     }

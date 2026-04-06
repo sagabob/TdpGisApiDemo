@@ -1,92 +1,75 @@
-import Map, { Marker, NavigationControl, Popup, ScaleControl, type MapRef } from 'react-map-gl/mapbox';
+/**
+ * Map shell: owns the Mapbox instance, camera sync strategy, and composes result pins + selection UI.
+ *
+ * Why `onMoveEnd` (not `onMove`): updating React context on every pan frame would re-render the whole
+ * provider subtree (search bar, entity filters, this map) dozens of times per second. We only need
+ * the latest camera in context for actions that read it (e.g. flying to a search hit); syncing on
+ * gesture end keeps the UI responsive without thrashing React.
+ *
+ * Why `resize()` on load: the map often mounts before flex layout has given the container its final
+ * size; calling `resize()` after paint fixes a 0×0 canvas until the next window resize.
+ */
+import Map, {
+  NavigationControl,
+  ScaleControl,
+  type MapRef,
+  type ViewStateChangeEvent,
+} from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { mapboxAccessToken, selectedPinColor } from '@/config/gis-config';
-import { useCallback, useContext, useRef } from 'react';
+import { mapboxAccessToken } from '@/config/gis-config';
+import { useCallback, useContext, useMemo, useRef } from 'react';
 import SearchContext from '@/contexts/SearchContext';
-import Pin from '@/components/maps/Pin';
+import { GisMapSearchMarkers } from '@/components/maps/GisMapSearchMarkers';
+import { GisMapSelectedOverlay } from '@/components/maps/GisMapSelectedOverlay';
 
 export const GisMap = () => {
-    const { loadedGeoData, selectedGeo, setSelectedGeo, initialPosition, setPosition } = useContext(SearchContext);
-    const mapRef = useRef<MapRef>(null);
+  const { loadedGeoData, selectedGeo, setSelectedGeo, initialPosition, setPosition } = useContext(SearchContext);
+  const mapRef = useRef<MapRef>(null);
 
-    const handleLoad = useCallback(() => {
-        // Container can be 0×0 on first layout; force Mapbox to match the final flex/absolute box.
-        requestAnimationFrame(() => {
-            mapRef.current?.resize();
-        });
-    }, []);
+  // Normalize to a real array so marker list always receives `[]` instead of `undefined`.
+  const results = useMemo(() => {
+    const r = loadedGeoData?.results;
+    return Array.isArray(r) ? r : [];
+  }, [loadedGeoData?.results]);
 
-    return (
-        <div className="h-full min-h-0 w-full">
-        <Map
-            ref={mapRef}
-            {...initialPosition}
-            mapboxAccessToken={mapboxAccessToken}
-            style={{ width: "100%", height: "100%" }}
-            mapStyle="mapbox://styles/mapbox/streets-v9"
-            onLoad={handleLoad}
-            onMove={evt => setPosition(evt.viewState)}
-        >
-            {loadedGeoData !== null && loadedGeoData.results !== undefined && Array.isArray(loadedGeoData.results) && loadedGeoData.results.map((item) =>
-            (
-                <Marker
-                    key={item.Id}
-                    longitude={Number(item.geometry.coordinates[0][0])}
-                    latitude={Number(item.geometry.coordinates[0][1])}
-                    onClick={e => {
-                        // If we let the click event propagates to the map, it will immediately close the popup
-                        // with `closeOnClick: true`
-                        e.originalEvent.stopPropagation();
-                        setSelectedGeo(item);
+  const handleLoad = useCallback(() => {
+    // Defer to the next frame so layout (flex/absolute) has committed before measuring the container.
+    requestAnimationFrame(() => {
+      mapRef.current?.resize();
+    });
+  }, []);
 
-                    }}
-                >
-                    <Pin size={20} />
-                </Marker>
-            ))}
-            {selectedGeo && (
-                <Marker
-                    key={"selected" + selectedGeo.Id}
-                    longitude={Number(selectedGeo.geometry.coordinates[0][0])}
-                    latitude={Number(selectedGeo.geometry.coordinates[0][1])}
-                    onClick={e => {
-                        // If we let the click event propagates to the map, it will immediately close the popup
-                        // with `closeOnClick: true`
-                        e.originalEvent.stopPropagation();
+  /** Sync camera to React only when movement stops — avoids re-rendering the tree on every pan frame. */
+  const handleMoveEnd = useCallback(
+    (evt: ViewStateChangeEvent) => {
+      // Full `viewState` preserves bearing/pitch/padding so the next render does not reset tilt/rotation.
+      setPosition(evt.viewState);
+    },
+    [setPosition],
+  );
 
-                    }}
-                >
-                    <Pin size={30} color={selectedPinColor} />
-                </Marker>)
-            }
-
-            {selectedGeo && (
-                <Popup
-                    key={selectedGeo.Id}
-                    anchor="bottom"
-                    offset={[0, -14]}
-                    longitude={Number(selectedGeo.geometry.coordinates[0][0])}
-                    latitude={Number(selectedGeo.geometry.coordinates[0][1])}
-                    onClose={() => setSelectedGeo(null)}
-
-                >
-                    <div>
-                        <h5 className="font-semibold text-sm text-slate-800 m-0">{selectedGeo.placeName}</h5>
-                        {selectedGeo.locality ? (
-                            <p className="text-xs text-slate-500 m-0 mt-1">{selectedGeo.locality}</p>
-                        ) : null}
-                        {selectedGeo.sourceEntityLabel ? (
-                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 m-0 mt-1.5">
-                                {selectedGeo.sourceEntityLabel}
-                            </p>
-                        ) : null}
-                    </div>
-
-                </Popup>)
-            }
-            <NavigationControl />
-            <ScaleControl />
-        </Map>
-        </div>
-    );
-}
+  return (
+    <div className="h-full min-h-0 w-full">
+      <Map
+        ref={mapRef}
+        {...initialPosition}
+        mapboxAccessToken={mapboxAccessToken}
+        style={{ width: '100%', height: '100%' }}
+        mapStyle="mapbox://styles/mapbox/streets-v9"
+        onLoad={handleLoad}
+        onMoveEnd={handleMoveEnd}
+      >
+        {/* Hit markers are split out and memoized — see `GisMapSearchMarkers`. */}
+        <GisMapSearchMarkers
+          results={results}
+          selectedId={selectedGeo?.Id ?? null}
+          onSelect={setSelectedGeo}
+        />
+        {/* Selected feature: larger pin + popup; kept separate so list markers can stay memoized. */}
+        {selectedGeo ? <GisMapSelectedOverlay feature={selectedGeo} onClose={() => setSelectedGeo(null)} /> : null}
+        <NavigationControl />
+        <ScaleControl />
+      </Map>
+    </div>
+  );
+};

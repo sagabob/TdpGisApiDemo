@@ -22,6 +22,8 @@ export async function proxyUpstream(
 ): Promise<void> {
   const { target, headers, timeoutMs = 25_000, logTag, upstreamErrorMessage } = options;
   try {
+    // Keep proxy handlers thin and consistent: method forwarding, timeout,
+    // content-type passthrough, and binary-safe response forwarding.
     const upstream = await fetch(target, {
       method: req.method,
       headers,

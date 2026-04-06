@@ -1,7 +1,12 @@
-const defaultPosition = {
+import type { ViewState } from 'react-map-gl/mapbox'
+
+const defaultPosition: ViewState = {
     longitude: 172.639847,
     latitude: -43.525650,
-    zoom: 9
+    zoom: 9,
+    bearing: 0,
+    pitch: 0,
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
 }
 
 /**

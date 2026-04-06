@@ -1,12 +1,11 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import SearchContext from '@/contexts/SearchContext';
 
-/** Fixed width so the row stays stable; full bar is left-aligned with `max-w-[560px]` in SearchBar. */
-const ENTITY_BTN_WIDTH = 'w-[168px]';
+/** Width is reserved by the parent in `SearchBar`; children use `w-full`. */
 
 function EntitySearchLoadingButton({ label }: { label: string }) {
   return (
-    <div className={`relative z-[1] shrink-0 ${ENTITY_BTN_WIDTH}`}>
+    <div className="relative z-[1] w-full">
       <button
         type="button"
         disabled
@@ -68,18 +67,35 @@ export function WorkspaceEntityFilters() {
   }
 
   if (workspaceEntitiesError !== null) {
-    return null;
+    return (
+      <button
+        type="button"
+        disabled
+        title={workspaceEntitiesError}
+        className="h-[42px] w-full rounded-md border border-dashed border-amber-300 bg-amber-50 px-2 text-xs text-amber-900"
+      >
+        Entities unavailable
+      </button>
+    );
   }
 
   if (!workspaceEntities?.length) {
-    return null;
+    return (
+      <button
+        type="button"
+        disabled
+        className="h-[42px] w-full rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 text-xs text-slate-600"
+      >
+        No entities
+      </button>
+    );
   }
 
   const total = workspaceEntities.length;
   const selected = selectedEntityIds.length;
 
   return (
-    <div ref={rootRef} className={`relative shrink-0 ${ENTITY_BTN_WIDTH}`}>
+    <div ref={rootRef} className="relative w-full">
       <button
         type="button"
         aria-expanded={open}

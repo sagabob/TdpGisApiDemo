@@ -20,7 +20,13 @@ const SearchBar = () => {
                             <SimpleSearchComponent {...searchInput} />
                             <DropdownComponent />
                         </div>
-                        <WorkspaceEntityFilters />
+                        {/*
+                          Fixed slot for the Entities control so the search field width does not jump
+                          when the list loads (same layout as when the button is already visible).
+                        */}
+                        <div className="flex w-[168px] shrink-0 flex-col items-stretch justify-start">
+                            <WorkspaceEntityFilters />
+                        </div>
                     </div>
                 </div>
             </div>

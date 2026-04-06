@@ -23,6 +23,7 @@ export function useWorkspaceGeoSearch() {
   } = useContext(SearchContext);
 
   useEffect(() => {
+    // One controller per effect run: cancels stale requests as inputs change quickly.
     const controller = new AbortController();
 
     const run = async () => {
@@ -32,6 +33,8 @@ export function useWorkspaceGeoSearch() {
           return;
         }
         const phrase = searchValue.trim();
+        // Query each selected entity independently so one transient failure
+        // does not hide successful results from other entities.
         const batches = await Promise.allSettled(
           selectedEntityIds.map(async (entityId) => {
             const entity = workspaceEntities.find((e) => e.id === entityId);
@@ -49,6 +52,7 @@ export function useWorkspaceGeoSearch() {
           }),
         );
 
+        // Keep only fulfilled batches; rejected batches are ignored and logged by axios path.
         const results = batches.flatMap((batch) => (batch.status === 'fulfilled' ? batch.value : []));
         getGeoData({ results });
       } catch (error) {
@@ -61,12 +65,15 @@ export function useWorkspaceGeoSearch() {
     if (searchValue.trim().length >= 3 && selectedEntityIds.length > 0) {
       void run();
     } else {
+      // Hide stale dropdown content when query is too short or no entity is selected.
       getGeoData(null);
     }
 
+    // Clear map selection whenever search term or entity filters change.
     setSelectedGeo(null);
 
     return () => {
+      // Abort in-flight calls from the previous run to avoid out-of-order updates.
       controller.abort();
     };
   }, [searchValue, getGeoData, setSelectedGeo, selectedEntityIds, workspaceEntities]);

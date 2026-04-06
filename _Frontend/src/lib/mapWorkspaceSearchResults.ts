@@ -22,6 +22,8 @@ function extractLngLat(geometry: unknown): [number, number] | null {
     return [c[0], c[1]];
   }
 
+  // GeoJSON Polygon/MultiPolygon coordinates are nested arrays.
+  // Walk down the first branch until we hit a numeric lng/lat pair.
   let cur: unknown = c;
   for (let depth = 0; depth < 8; depth++) {
     if (!Array.isArray(cur) || cur.length === 0) return null;
@@ -70,6 +72,8 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
     const row = raw as Record<string, unknown>;
 
     let geometryValue: unknown;
+    // Prefer fields declared as "Object" in property mappings, because
+    // those are expected to contain geometry payloads from Mongo.
     for (const m of entity.propertyMappings) {
       if (m.columnType !== 1) continue;
       const v = row[m.propertyLabel];
@@ -79,6 +83,7 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
       }
     }
     if (geometryValue === undefined) {
+      // Fallback for older/partial mappings: scan all row values.
       for (const v of Object.values(row)) {
         if (extractLngLat(v) !== null) {
           geometryValue = v;
@@ -94,6 +99,7 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
       idLabel && row[idLabel] != null && row[idLabel] !== ''
         ? String(row[idLabel])
         : `row-${index}`;
+    // "queryField" label is the best display title; fallback to first string in row.
     const placeName =
       queryLabel && row[queryLabel] != null
         ? String(row[queryLabel])

@@ -1,11 +1,9 @@
 import { createContext, type Dispatch, type SetStateAction } from "react";
+import type { ViewState } from "react-map-gl/mapbox";
 import type { GisConnectionDto } from "@/types/gisWorkspace";
 
-export type Position = {
-    longitude: number;
-    latitude: number;
-    zoom: number;
-}
+/** Map camera state (aligned with `react-map-gl` so pan/zoom/rotate updates stay consistent). */
+export type Position = ViewState;
 
 export type GeoFeature = {
     Id: string | number;
