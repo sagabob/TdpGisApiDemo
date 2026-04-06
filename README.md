@@ -1,6 +1,6 @@
 # TdpGisApiDemo
 
-Sample **ASP.NET Core** solution for managing **MongoDB** data sources, **GIS connection** definitions (collections, mappings, geometry), **workspaces**, and **workspace access tokens**. Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from MongoDB using saved configuration.
+Sample **ASP.NET Core** solution for managing **MongoDB** data sources, **GIS feature** definitions (collections, mappings, geometry), **workspaces**, and **workspace access tokens**. Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from MongoDB using saved configuration.
 
 The backend exposes two hosts: a **cookie-authenticated MVC admin** (`TdpGis.Endpoints`) and a **FastEndpoints REST API** (`TdpGis.Api`) secured by workspace access tokens for GIS queries.
 
