@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyIncomingRequest } from '../../verifyVercelRequest';
-import { ensureGetOrHead, proxyUpstream } from '../proxyUtils';
+import { verifyIncomingRequest } from '../verifyVercelRequest.js';
+import { ensureGetOrHead, proxyUpstream } from '../proxyUtils.js';
 
 /**
  * Proxies GET /api/gis/* to GIS_API_BASE_URL/* (Vercel env only).
  * Optional GIS_API_ACCESS_TOKEN adds X-Access-Token upstream (do not pass secrets from the browser).
- * Optional incoming checks: ALLOWED_ORIGINS, INTERNAL_API_KEY — see `verifyVercelRequest.ts`.
+ * Optional incoming checks: ALLOWED_ORIGINS, INTERNAL_API_KEY — see `api/verifyVercelRequest.ts`.
  * Example: /api/gis/GisQuery/querybytext/QueryPlaceName/foo/5 → {GIS_API_BASE_URL}/GisQuery/querybytext/QueryPlaceName/foo/5
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {

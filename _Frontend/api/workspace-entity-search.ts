@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyIncomingRequest } from '../verifyVercelRequest';
-import { getWorkspaceRestConfig, workspaceUpstreamHeaders } from './workspaceRestConfig';
-import { ensureGetOrHead, proxyUpstream } from './proxyUtils';
+import { verifyIncomingRequest } from './verifyVercelRequest.js';
+import { getWorkspaceRestConfig, workspaceUpstreamHeaders } from './workspaceRestConfig.js';
+import { ensureGetOrHead, proxyUpstream } from './proxyUtils.js';
 
 /**
  * GET /api/workspace-entity-search?entityId=&q=

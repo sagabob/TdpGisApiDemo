@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyIncomingRequest } from '../verifyVercelRequest';
-import { getWorkspaceRestConfig, workspaceUpstreamHeaders } from './workspaceRestConfig';
-import { ensureGetOrHead, proxyUpstream } from './proxyUtils';
+import { verifyIncomingRequest } from './verifyVercelRequest.js';
+import { getWorkspaceRestConfig, workspaceUpstreamHeaders } from './workspaceRestConfig.js';
+import { ensureGetOrHead, proxyUpstream } from './proxyUtils.js';
 
 /**
  * GET /api/workspace-entities — proxies to FastEndpoints GIS workspace list.
  * Upstream URL and token are server-only (Vercel env: REST_API_BASE_URL, WORKSPACE_ID, WORKSPACE_ACCESS_TOKEN).
- * Optional incoming checks: ALLOWED_ORIGINS, INTERNAL_API_KEY — see `verifyVercelRequest.ts`.
+ * Optional incoming checks: ALLOWED_ORIGINS, INTERNAL_API_KEY — see `api/verifyVercelRequest.ts`.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!ensureGetOrHead(req, res)) return;

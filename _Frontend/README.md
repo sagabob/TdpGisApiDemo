@@ -66,7 +66,7 @@ Serverless routes under `api/` handle upstream proxying:
 - `api/workspace-entities.ts`
 - `api/workspace-entity-search.ts`
 
-They validate incoming requests (`verifyVercelRequest.ts`) and read server env only.
+They validate incoming requests (`api/verifyVercelRequest.ts`) and read server env only.
 
 ## Search Flow
 - `useWorkspaceEntities` loads available workspace entities.
