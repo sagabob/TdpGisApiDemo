@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -58,19 +59,32 @@ if (!app.Environment.IsDevelopment())
 
 // In Docker / behind a reverse proxy, Kestrel is HTTP-only; TLS is at the edge. Skip redirect in Production to avoid
 // "Failed to determine the https port" and rely on the platform URL being HTTPS.
+// In Development, skip HTTPS redirect for /health* so http://localhost:.../health works without trusting the dev cert.
 if (app.Environment.IsDevelopment())
-    app.UseHttpsRedirection();
+{
+    app.UseWhen(
+        ctx => !ctx.Request.Path.StartsWithSegments("/health"),
+        branch => branch.UseHttpsRedirection());
+}
 
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapStaticAssets();
+// Register before static assets / MVC so /health is not shadowed; AllowAnonymous so cookie auth never blocks probes.
+app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        Predicate = r => r.Tags?.Contains("live") == true
+    })
+    .AllowAnonymous();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = r => r.Tags?.Contains("ready") == true
+    })
+    .AllowAnonymous();
 
-// Liveness: process is up (use for simple load balancer checks). Readiness: includes PostgreSQL.
-app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") });
-app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") });
+app.MapStaticAssets();
 
 app.MapControllerRoute(
         "default",
