@@ -1,6 +1,8 @@
 # TDP GIS Map Application (Frontend)
 
-React + Vite frontend for searching workspace GIS entities and rendering results on a Mapbox map.
+React + Vite frontend for querying workspace GIS entities through `TdpGis.Api` and rendering results on a Mapbox map.
+
+Live demo: [https://tdp-gis-api-demo.vercel.app/](https://tdp-gis-api-demo.vercel.app/)
 
 ## Features
 - Mapbox map rendering with markers, popup details, and scale/navigation controls.
@@ -8,6 +10,7 @@ React + Vite frontend for searching workspace GIS entities and rendering results
 - Debounced text search with cancellation via `AbortController`.
 - Result attribution by entity (shows entity label per record and summary counts).
 - Server-side proxy/BFF pattern for backend calls (tokens stay off the client bundle).
+- Workspace API token is injected only on server proxy routes (`api/workspace-entities.ts`, `api/workspace-entity-search.ts`).
 
 ## Tech Stack
 - React 19 + TypeScript

@@ -4,12 +4,13 @@ Sample **ASP.NET Core** solution for managing **MongoDB** data sources, **GIS fe
 
 The backend exposes two hosts: a **cookie-authenticated MVC admin** (`TdpGis.Endpoints`) and a **FastEndpoints REST API** (`TdpGis.Api`) secured by workspace access tokens for GIS queries.
 
-### Live demo (DigitalOcean App Platform)
+### Live demos
 
 | App | URL |
 |-----|-----|
 | **Admin UI** (`TdpGis.Endpoints`) | [https://seal-app-q3vt5.ondigitalocean.app/](https://seal-app-q3vt5.ondigitalocean.app/) |
 | **REST API** (`TdpGis.Api`; Swagger at `/swagger`) | [https://urchin-app-f57y9.ondigitalocean.app/](https://urchin-app-f57y9.ondigitalocean.app/) |
+| **Frontend SPA** (`_Frontend`) | [https://tdp-gis-api-demo.vercel.app/](https://tdp-gis-api-demo.vercel.app/) |
 
 ## Architecture (Clean Architecture)
 
@@ -135,9 +136,19 @@ The GIS tab also invokes JSON **POST** actions on **`HomeController`**: `Validat
 
 The admin UI is **ASP.NET Core MVC**: Razor views under **`_Backend/TdpGis.Endpoints/Views/`**, static assets under **`wwwroot/`**, Bootstrap/jQuery as in the existing layout and scripts.
 
-### Optional SPA (`_Frontend/`)
+### GIS query frontend (`_Frontend/`)
 
-There is a separate **Vite + React** app under **`_Frontend/`** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **TanStack Router**, **Axios**). It is not part of the .NET solution; run **`npm install`** then **`npm run dev`** (see `_Frontend/package.json`) when calling the REST API from a browser during development.
+This is the browser client that consumes **`TdpGis.Api`** and displays GIS search results on the map. It uses **Vite + React** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **Axios**) with a same-origin proxy/BFF pattern under `_Frontend/api/` so workspace token auth stays server-side.
+
+Runtime flow:
+
+- `useWorkspaceEntities` loads workspace entities from `/api/workspace-entities`.
+- `useWorkspaceGeoSearch` searches selected entities via `/api/workspace-entity-search?entityId=...&q=...`.
+- Results are normalized then rendered as map markers + selection overlay in `GisMap`.
+
+Run locally: **`npm install`** then **`npm run dev`** in `_Frontend/`.
+
+Live frontend demo: [https://tdp-gis-api-demo.vercel.app/](https://tdp-gis-api-demo.vercel.app/).
 
 ## Features (summary)
 
