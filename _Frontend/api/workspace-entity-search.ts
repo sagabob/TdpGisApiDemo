@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyIncomingRequest } from '../verifyVercelRequest';
 import { getWorkspaceRestConfig, workspaceUpstreamHeaders } from './workspaceRestConfig';
+import { ensureGetOrHead, proxyUpstream } from './proxyUtils';
 
 /**
  * GET /api/workspace-entity-search?entityId=&q=
@@ -9,10 +10,7 @@ import { getWorkspaceRestConfig, workspaceUpstreamHeaders } from './workspaceRes
  * Auth: WORKSPACE_ACCESS_TOKEN as X-Access-Token (same as workspace-entities).
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    res.setHeader('Allow', 'GET, HEAD');
-    return res.status(405).end();
-  }
+  if (!ensureGetOrHead(req, res)) return;
 
   const denied = verifyIncomingRequest(req);
   if (denied) {
@@ -43,22 +41,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const target = `${restApiBaseUrl}/gis-workspace/${workspaceId}/entity/${encodeURIComponent(entityId)}/search/${encodeURIComponent(phrase)}`;
-
-  try {
-    const upstream = await fetch(target, {
-      method: req.method,
-      headers: workspaceUpstreamHeaders(accessToken),
-      signal: AbortSignal.timeout(25_000),
-    });
-
-    const contentType = upstream.headers.get('content-type');
-    if (contentType) res.setHeader('Content-Type', contentType);
-
-    res.status(upstream.status);
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    return res.send(buf);
-  } catch (e) {
-    console.error('[api/workspace-entity-search] upstream error', e);
-    return res.status(502).json({ message: 'Upstream workspace entity search failed.' });
-  }
+  return proxyUpstream(req, res, {
+    target,
+    headers: workspaceUpstreamHeaders(accessToken),
+    logTag: '[api/workspace-entity-search] upstream error',
+    upstreamErrorMessage: 'Upstream workspace entity search failed.',
+  });
 }

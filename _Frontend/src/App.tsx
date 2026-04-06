@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GisMap } from '@/components/maps/GisMap';
-import { SearchContextProvider } from '@/contexts/SearchContext';
+import { SearchContextProvider, type GeoDataResult, type GeoFeature } from '@/contexts/SearchContext';
 import { defaultPosition } from '@/config/gis-config';
 import SearchBar from '@/components/layouts/SearchBar';
 import { useWorkspaceEntities } from '@/hooks/useWorkspaceEntities';
@@ -8,8 +8,8 @@ import { useWorkspaceEntities } from '@/hooks/useWorkspaceEntities';
 function App() {
   const [initialPosition, setPosition] = useState(defaultPosition);
   const [searchValue, setSearchValue] = useState('');
-  const [loadedGeoData, getGeoData] = useState<any>(null);
-  const [selectedGeo, setSelectedGeo] = useState<any>(null);
+  const [loadedGeoData, getGeoData] = useState<GeoDataResult | null>(null);
+  const [selectedGeo, setSelectedGeo] = useState<GeoFeature | null>(null);
   const {
     workspaceEntities,
     workspaceEntitiesLoading,

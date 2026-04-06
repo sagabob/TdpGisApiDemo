@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyIncomingRequest } from '../../verifyVercelRequest';
+import { ensureGetOrHead, proxyUpstream } from '../proxyUtils';
 
 /**
  * Proxies GET /api/gis/* to GIS_API_BASE_URL/* (Vercel env only).
@@ -8,10 +9,7 @@ import { verifyIncomingRequest } from '../../verifyVercelRequest';
  * Example: /api/gis/GisQuery/querybytext/QueryPlaceName/foo/5 → {GIS_API_BASE_URL}/GisQuery/querybytext/QueryPlaceName/foo/5
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    res.setHeader('Allow', 'GET, HEAD');
-    return res.status(405).end();
-  }
+  if (!ensureGetOrHead(req, res)) return;
 
   const denied = verifyIncomingRequest(req);
   if (denied) {
@@ -52,21 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     forwardHeaders['X-Access-Token'] = serverToken;
   }
 
-  try {
-    const upstream = await fetch(target, {
-      method: req.method,
-      headers: forwardHeaders,
-      signal: AbortSignal.timeout(25_000),
-    });
-
-    const contentType = upstream.headers.get('content-type');
-    if (contentType) res.setHeader('Content-Type', contentType);
-
-    res.status(upstream.status);
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    return res.send(buf);
-  } catch (e) {
-    console.error('[api/gis] upstream error', e);
-    return res.status(502).json({ message: 'Upstream GIS request failed.' });
-  }
+  return proxyUpstream(req, res, {
+    target,
+    headers: forwardHeaders,
+    logTag: '[api/gis] upstream error',
+    upstreamErrorMessage: 'Upstream GIS request failed.',
+  });
 }

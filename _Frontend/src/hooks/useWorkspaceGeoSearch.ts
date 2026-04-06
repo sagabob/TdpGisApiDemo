@@ -32,7 +32,7 @@ export function useWorkspaceGeoSearch() {
           return;
         }
         const phrase = searchValue.trim();
-        const batches = await Promise.all(
+        const batches = await Promise.allSettled(
           selectedEntityIds.map(async (entityId) => {
             const entity = workspaceEntities.find((e) => e.id === entityId);
             if (!entity) return [] as GeoFeature[];
@@ -49,7 +49,8 @@ export function useWorkspaceGeoSearch() {
           }),
         );
 
-        getGeoData({ results: batches.flat() });
+        const results = batches.flatMap((batch) => (batch.status === 'fulfilled' ? batch.value : []));
+        getGeoData({ results });
       } catch (error) {
         if (!axios.isCancel(error)) {
           console.error('Error fetching geo data', error);
