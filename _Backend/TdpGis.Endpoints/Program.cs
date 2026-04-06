@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using TdpGis.AdminApplication.DependencyInjection;
 using TdpGis.Endpoints.Options;
 using TdpGis.Infrastructure.DependencyInjection;
+using TdpGis.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +38,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddDbContextCheck<GisAppDbContext>("database", tags: ["ready"]);
+
 builder.Services.AddAdminApplication();
 
 var app = builder.Build();
@@ -60,6 +67,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+// Liveness: process is up (use for simple load balancer checks). Readiness: includes PostgreSQL.
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = r => r.Tags.Contains("ready") });
 
 app.MapControllerRoute(
         "default",
