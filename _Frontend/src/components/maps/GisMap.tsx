@@ -17,7 +17,7 @@ import Map, {
 } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { mapboxAccessToken } from '@/config/gis-config';
-import { useCallback, useContext, useMemo, useRef } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import SearchContext from '@/contexts/SearchContext';
 import { GisMapSearchMarkers } from '@/components/maps/GisMapSearchMarkers';
 import { GisMapSelectedOverlay } from '@/components/maps/GisMapSelectedOverlay';
@@ -39,6 +39,36 @@ export const GisMap = () => {
     });
   }, []);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Keep map interactions smooth by letting Mapbox own the camera during pan/zoom.
+    // We only "snap" camera from React state for external actions (e.g. selecting a search hit).
+    const center = map.getCenter();
+    const curLng = center.lng;
+    const curLat = center.lat;
+    const curZoom = map.getZoom();
+    const curBearing = map.getBearing();
+    const curPitch = map.getPitch();
+    const eps = 1e-6;
+    const changed =
+      Math.abs(curLng - initialPosition.longitude) > eps ||
+      Math.abs(curLat - initialPosition.latitude) > eps ||
+      Math.abs(curZoom - initialPosition.zoom) > eps ||
+      Math.abs(curBearing - initialPosition.bearing) > eps ||
+      Math.abs(curPitch - initialPosition.pitch) > eps;
+
+    if (!changed) return;
+    map.easeTo({
+      center: [initialPosition.longitude, initialPosition.latitude],
+      zoom: initialPosition.zoom,
+      bearing: initialPosition.bearing,
+      pitch: initialPosition.pitch,
+      duration: 250,
+    });
+  }, [initialPosition]);
+
   /** Sync camera to React only when movement stops — avoids re-rendering the tree on every pan frame. */
   const handleMoveEnd = useCallback(
     (evt: ViewStateChangeEvent) => {
@@ -48,11 +78,15 @@ export const GisMap = () => {
     [setPosition],
   );
 
+  const clearSelectedGeo = useCallback(() => {
+    setSelectedGeo(null);
+  }, [setSelectedGeo]);
+
   return (
     <div className="h-full min-h-0 w-full">
       <Map
         ref={mapRef}
-        {...initialPosition}
+        initialViewState={initialPosition}
         mapboxAccessToken={mapboxAccessToken}
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/streets-v9"
@@ -66,7 +100,9 @@ export const GisMap = () => {
           onSelect={setSelectedGeo}
         />
         {/* Selected feature: larger pin + popup; kept separate so list markers can stay memoized. */}
-        {selectedGeo ? <GisMapSelectedOverlay feature={selectedGeo} onClose={() => setSelectedGeo(null)} /> : null}
+        {selectedGeo ? (
+          <GisMapSelectedOverlay feature={selectedGeo} onClose={clearSelectedGeo} />
+        ) : null}
         <NavigationControl />
         <ScaleControl />
       </Map>

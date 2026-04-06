@@ -35,6 +35,11 @@ function GisMapSelectedOverlayInner({ feature, onClose }: Props) {
       </Marker>
       <Popup anchor="bottom" offset={[0, -14]} longitude={lng} latitude={lat} onClose={onClose}>
         <div>
+          {/*
+            Text fields come from GeoFeature (SearchContext). For workspace search they are filled in
+            mapWorkspaceSearchResults.ts: placeName = row[label for entity.queryField]; locality = another
+            string column heuristic; sourceEntityLabel = workspace entity name/label — not raw API keys here.
+          */}
           <h5 className="m-0 text-sm font-semibold text-slate-800">{feature.placeName}</h5>
           {feature.locality ? <p className="m-0 mt-1 text-xs text-slate-500">{feature.locality}</p> : null}
           {feature.sourceEntityLabel ? (
@@ -48,4 +53,9 @@ function GisMapSelectedOverlayInner({ feature, onClose }: Props) {
   );
 }
 
+/**
+ * `memo`: skip re-rendering this subtree when the parent (`GisMap`) re-renders but the same feature
+ * is still selected and `onClose` is a stable callback — fewer DOM updates for Marker/Popup.
+ * (Inline `onClose={() => ...}` in the parent would defeat this; parent uses `useCallback`.)
+ */
 export const GisMapSelectedOverlay = memo(GisMapSelectedOverlayInner);
