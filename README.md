@@ -18,7 +18,7 @@ This is the browser client that consumes **`TdpGis.Api`** and shows search resul
 
 **Try the demo**
 
-Go to the demo link, type a phrase such as 'park' or 'garden' to see the results. The demo shows capability to search place names and addresses
+Go to the frontend demo link, type a phrase such as 'park' or 'garden' to see the results. The demo shows capability to search place names and addresses
 
 **Runtime flow**
 
