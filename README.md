@@ -17,6 +17,7 @@ The **backend** in **`_Backend/`** powers that API and a **cookie-authenticated 
 This is the browser client that consumes **`TdpGis.Api`** and shows search results on the map. It uses **Vite + React** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **Axios**). The browser only calls same-origin **`/api/*`** routes; **Vercel serverless handlers** under `_Frontend/api/` (and the Vite dev proxy locally) forward to the real API and attach **`X-Access-Token`** from server environment so tokens are not embedded in the client bundle.
 
 **Try the demo**
+
 Go to the demo link, type a phrase such as 'park' or 'garden' to see the results. The demo shows capability to search place names and addresses
 
 **Runtime flow**
