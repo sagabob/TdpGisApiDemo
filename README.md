@@ -1,20 +1,46 @@
 # TdpGisApiDemo
 
-Sample **ASP.NET Core** solution for managing **MongoDB** data sources, **GIS feature** definitions (collections, mappings, geometry), **workspaces**, and **workspace access tokens**. Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from MongoDB using saved configuration.
+The **end goal** of this repository is the **GIS map frontend** in **`_Frontend/`**: a browser app that queries **`TdpGis.Api`** and displays workspace GIS features on a Mapbox map.
 
-The backend exposes two hosts: a **cookie-authenticated MVC admin** (`TdpGis.Endpoints`) and a **FastEndpoints REST API** (`TdpGis.Api`) secured by workspace access tokens for GIS queries.
+The **backend** in **`_Backend/`** powers that API and a **cookie-authenticated admin** (`TdpGis.Endpoints`) where you configure MongoDB connections, GIS entities, workspaces, and access tokens. Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from **MongoDB** using saved configuration.
 
-### Live demos
+## Live demos
 
 | App | URL |
 |-----|-----|
-| **Admin UI** (`TdpGis.Endpoints`) | [https://seal-app-q3vt5.ondigitalocean.app/](https://seal-app-q3vt5.ondigitalocean.app/) |
+| **GIS map frontend** (`_Frontend`) | [https://tdp-gis-api-demo.vercel.app/](https://tdp-gis-api-demo.vercel.app/) |
 | **REST API** (`TdpGis.Api`; Swagger at `/swagger`) | [https://urchin-app-f57y9.ondigitalocean.app/](https://urchin-app-f57y9.ondigitalocean.app/) |
-| **Frontend SPA** (`_Frontend`) | [https://tdp-gis-api-demo.vercel.app/](https://tdp-gis-api-demo.vercel.app/) |
+| **Admin UI** (`TdpGis.Endpoints`) | [https://seal-app-q3vt5.ondigitalocean.app/](https://seal-app-q3vt5.ondigitalocean.app/) |
 
-## Architecture (Clean Architecture)
+## GIS map frontend (`_Frontend/`)
 
-The backend follows **Clean Architecture** principles: **dependency direction points inward**. Outer layers depend on inner ones; the **domain** and **application** layers stay free of databases, HTTP, or UI frameworks.
+This is the browser client that consumes **`TdpGis.Api`** and shows search results on the map. It uses **Vite + React** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **Axios**). The browser only calls same-origin **`/api/*`** routes; **Vercel serverless handlers** under `_Frontend/api/` (and the Vite dev proxy locally) forward to the real API and attach **`X-Access-Token`** from server environment so tokens are not embedded in the client bundle.
+
+**Runtime flow**
+
+- `useWorkspaceEntities` loads workspace entities from `/api/workspace-entities`.
+- `useWorkspaceGeoSearch` searches selected entities via `/api/workspace-entity-search?entityId=...&q=...`.
+- Responses are normalized and rendered as map markers and a selection overlay in `GisMap`.
+
+**Run locally**
+
+```bash
+cd _Frontend
+npm install
+npm run dev
+```
+
+More detail: `_Frontend/README.md`.
+
+---
+
+## Backend (`_Backend/`)
+
+The backend exposes two hosts: a **FastEndpoints REST API** (`TdpGis.Api`) for GIS queries (used by the frontend) and a **cookie-authenticated MVC admin** (`TdpGis.Endpoints`) for configuration.
+
+### Architecture (Clean Architecture)
+
+The backend follows **Clean Architecture**: **dependency direction points inward**. Outer layers depend on inner ones; the **domain** and **application** layers stay free of databases, HTTP, or UI frameworks.
 
 **`TdpGis.Application`** and **`TdpGis.AdminApplication`** are **sibling** use case assemblies: they do **not** depend on each other. Both depend only on **`TdpGis.Domain`**. The first models **end-user** use cases (GIS API consumers); the second models **admin** use cases (configuration and metadata management). Each exposes **ports** (interfaces) that **Infrastructure** implements.
 
@@ -28,7 +54,7 @@ The backend follows **Clean Architecture** principles: **dependency direction po
 
 **`TdpGis.Api`** uses the **end-user** application layer; **`TdpGis.Endpoints`** uses the **admin** application layer. Both share **Infrastructure** and **Domain**; only **hosting** and **transport** differ (REST vs Razor).
 
-## Solution layout
+### Solution layout
 
 All backend projects live under `_Backend/`:
 
@@ -47,15 +73,15 @@ Open the solution:
 dotnet build _Backend/TdpGisApiDemo.slnx
 ```
 
-## Prerequisites
+### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - **PostgreSQL** for application metadata (EF Core)
 - **MongoDB** (optional until you add Mongo connection strings and GIS entities that read collections)
 
-## Configuration
+### Configuration
 
-### PostgreSQL (EF Core)
+#### PostgreSQL (EF Core)
 
 Set **`ConnectionStrings:Database`** to a valid PostgreSQL connection string. This applies to both **`TdpGis.Endpoints`** and **`TdpGis.Api`** (each has its own `appsettings`; use `appsettings.Development.json` locally or **environment variables** / **user secrets** for secrets).
 
@@ -63,11 +89,11 @@ Base `appsettings.json` files may leave the connection string empty; ensure it i
 
 **Cookie auth keys:** The admin app stores **ASP.NET Data Protection** keys in PostgreSQL (`PersistKeysToDbContext<GisAppDbContext>`) so authentication cookies remain valid across container restarts without a file volume. Apply EF migrations **before** relying on login in production or Docker; the migrations include the Data Protection keys table.
 
-### Admin dashboard sign-in (`TdpGis.Endpoints` only)
+#### Admin dashboard sign-in (`TdpGis.Endpoints` only)
 
 The configuration UI requires authentication. Configure **`AdminDashboard:User`** and **`AdminDashboard:Password`** (see `appsettings.json` / `AdminDashboardOptions`). If the password is not set, login shows a configuration error.
 
-## Database
+### Database
 
 Apply EF Core migrations to create or update the schema. Migrations live in **`TdpGis.Infrastructure`**. Example (from repo root):
 
@@ -79,7 +105,7 @@ You can use **`TdpGis.Api`** as the startup project instead if you prefer; it mu
 
 > **Note:** `TdpGis.Infrastructure` references SQL Server and Npgsql packages; the app registers **PostgreSQL** via **`UseNpgsql`** in `AddInfrastructure`.
 
-## Run the admin web app (`TdpGis.Endpoints`)
+### Run the admin web app (`TdpGis.Endpoints`)
 
 ```bash
 cd _Backend/TdpGis.Endpoints
@@ -94,7 +120,7 @@ Default URLs (see `Properties/launchSettings.json`): **https://localhost:7036** 
 
 Sign in at **`/Account/Login`**, then open the configuration hub.
 
-## Run the REST API (`TdpGis.Api`)
+### Run the REST API (`TdpGis.Api`)
 
 ```bash
 cd _Backend/TdpGis.Api
@@ -103,11 +129,11 @@ dotnet run
 
 Default URLs (see `Properties/launchSettings.json`): **https://localhost:7255** and **http://localhost:5236**.
 
-**CORS** is enabled with a **default policy** that allows any origin, method, and header (useful for browser clients such as the optional `_Frontend` dev server).
+**CORS** is enabled with a **default policy** that allows any origin, method, and header (useful for browser clients such as the `_Frontend` dev server).
 
 With the app running, open the **Swagger UI** (FastEndpoints + Swagger) at **`/swagger`** on that host.
 
-## REST API (GIS query)
+### REST API (GIS query)
 
 GIS endpoints require a **valid workspace access token**: header **`X-Access-Token`**, or **`Authorization: Bearer`** with the token value. Tokens are issued from the admin UI and stored in PostgreSQL with the workspace.
 
@@ -116,7 +142,7 @@ GIS endpoints require a **valid workspace access token**: header **`X-Access-Tok
 | GET | `/api/gis-workspace-entities/{workspaceId}` | List GIS entity definitions (DTOs) for the workspace. |
 | GET | `/api/gis-workspace/{workspaceId}/entity/{entityId}/search/{searchedPhrase}` | Search within a GIS entity’s collection (subject to ongoing implementation). |
 
-## Admin UI routes (`TdpGis.Endpoints`)
+### Admin UI routes (`TdpGis.Endpoints`)
 
 | Route | Purpose |
 |-------|---------|
@@ -130,34 +156,16 @@ Tab **2 (GIS connection)** supports editing an existing GIS connection via the p
 
 The GIS tab also invokes JSON **POST** actions on **`HomeController`**: `ValidateMongoConnection`, `GetCollectionsForSavedConnection`, `GetMongoSampleForSavedConnection` (called from `Index.cshtml` via `fetch`).
 
-## Frontends
+### Admin web UI implementation (server-rendered)
 
-### Server-rendered admin (`TdpGis.Endpoints`)
-
-The admin UI is **ASP.NET Core MVC**: Razor views under **`_Backend/TdpGis.Endpoints/Views/`**, static assets under **`wwwroot/`**, Bootstrap/jQuery as in the existing layout and scripts.
-
-### GIS query frontend (`_Frontend/`)
-
-This is the browser client that consumes **`TdpGis.Api`** and displays GIS search results on the map. It uses **Vite + React** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **Axios**) with a same-origin proxy/BFF pattern under `_Frontend/api/` so workspace token auth stays server-side.
-
-Runtime flow:
-
-- `useWorkspaceEntities` loads workspace entities from `/api/workspace-entities`.
-- `useWorkspaceGeoSearch` searches selected entities via `/api/workspace-entity-search?entityId=...&q=...`.
-- Results are normalized then rendered as map markers + selection overlay in `GisMap`.
-
-Run locally: **`npm install`** then **`npm run dev`** in `_Frontend/`.
-
-Live frontend demo: [https://tdp-gis-api-demo.vercel.app/](https://tdp-gis-api-demo.vercel.app/).
+The admin app is **ASP.NET Core MVC**: Razor views under **`_Backend/TdpGis.Endpoints/Views/`**, static assets under **`wwwroot/`**, Bootstrap/jQuery as in the layout and validation scripts.
 
 ## Features (summary)
 
-- Save and validate **MongoDB** connection strings (metadata in PostgreSQL).
-- Define **GIS connections**: collection, query field, geometry type, property mappings, optional workspace.
-- **Workspaces**: create/rename, assign GIS entities, issue and manage **access tokens** (name, expiry, active/public flags).
-- **REST API** for workspace-scoped GIS listing and search, with token-based access.
-- **Cookie**-based admin login for the configuration UI.
+- **Frontend**: workspace entity filters, debounced search against **`TdpGis.Api`**, Mapbox markers and detail overlay (BFF keeps access tokens server-side).
+- **REST API**: workspace-scoped GIS entity listing and search, token-based access.
+- **Admin**: save and validate **MongoDB** connection strings; define **GIS connections** (collection, query field, geometry, mappings, optional workspace); **workspaces** with entity assignment and **access tokens**; **cookie** login for configuration.
 
-## Repository root
+## Repository layout
 
-This `README.md` is at the repository root. The buildable backend solution is under **`_Backend/`**; an optional Node client lives under **`_Frontend/`**.
+This `README.md` is at the repository root. The **GIS frontend** lives under **`_Frontend/`**; the **.NET solution** is under **`_Backend/`** (`TdpGisApiDemo.slnx`).
