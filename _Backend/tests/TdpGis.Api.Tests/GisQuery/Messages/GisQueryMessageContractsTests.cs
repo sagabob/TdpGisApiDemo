@@ -42,7 +42,7 @@ public class GisQueryMessageContractsTests
             .Single();
 
         fromHeader.HeaderName.Should().Be(GisWorkspaceAccess.AccessTokenHeader);
-        fromHeader.IsRequired.Should().BeFalse();
+        fromHeader.IsRequired.Should().BeTrue();
         defaultValue.Value.Should().Be(string.Empty);
     }
 
@@ -61,6 +61,6 @@ public class GisQueryMessageContractsTests
         request.WorkspaceId.Should().Be(workspaceId);
         request.EntityId.Should().Be(entityId);
         request.SearchedPhrase.Should().Be(searchedPhrase);
-        request.AccessToken.Should().BeNull();
+        request.AccessToken.Should().NotBeNullOrEmpty();
     }
 }

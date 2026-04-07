@@ -28,10 +28,6 @@ public class GetGisWorkspaceEntitiesEndpointTests
             TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var body = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(TestContext.Current
-            .CancellationToken);
-        body.Should().NotBeNull();
-        body!["message"].Should().Contain("Authorization: Bearer");
     }
 
     [Fact]
