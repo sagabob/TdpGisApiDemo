@@ -1,6 +1,6 @@
 using TdpGis.Application.Abstractions;
 
-namespace TdpGis.Api.GisQuery;
+namespace TdpGis.Api.GisQuery.Helpers;
 
 /// <summary>
 ///     Shared access-token resolution and workspace token validation for GIS query endpoints.
