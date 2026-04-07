@@ -76,6 +76,42 @@ public class SearchGisEntityEndpointTests
     }
 
     [Fact]
+    public async Task Get_returns_401_when_access_token_is_invalid()
+    {
+        var workspaceId = Guid.NewGuid();
+        var entityId = Guid.NewGuid();
+        const string token = "invalid-token";
+
+        var repository = new Mock<IGisConfigurationService>(MockBehavior.Strict);
+        repository
+            .Setup(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GisWorkspaceAccessToken?)null);
+
+        var dataService = new Mock<IGisDataService>(MockBehavior.Strict);
+
+        await using var app = CreateApp(repository, dataService);
+        using var client = app.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Access-Token", token);
+
+        var response = await client.GetAsync(
+            $"/api/gis-workspace/{workspaceId}/entity/{entityId}/search/garden",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var body = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(
+            TestContext.Current.CancellationToken);
+        body.Should().NotBeNull();
+        body!["message"].Should().Contain("Invalid workspace, access token");
+
+        repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
+            Times.Once);
+        repository.Verify(r => r.GetGisConnectionDtoByEntityId(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+        dataService.Verify(
+            d => d.GetSearchedInstances(It.IsAny<GisConnection>(), It.IsAny<string>(), It.IsAny<int>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Get_returns_collections_when_access_and_entity_are_valid()
     {
         var workspaceId = Guid.NewGuid();
