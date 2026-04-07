@@ -1,54 +1,84 @@
 # TDP GIS Map Application (Frontend)
 
-A sleek, responsive, and highly interactive Geographic Information System (GIS) application built with React, Vite, and Mapbox GL. This frontend interface allows users to seamlessly search for locations, plot dynamic map markers, and view geospatial entity data.
+React + Vite frontend for querying workspace GIS entities through `TdpGis.Api` and rendering results on a Mapbox map.
 
-## 🚀 Features
-- **Interactive Mapbox Integration:** Leveraging `react-map-gl` for hardware-accelerated 2D/3D map rendering.
-- **Real-time Location Search:** Instant geocoding and querying utilizing a debounced search bar.
-- **Race Condition Prevention:** Implements `AbortController` in Axios requests to cancel lingering requests and ensure data consistency.
-- **Custom Map Elements:** Dynamic visual pins and popups displaying details about the queried localities.
-- **React Context API:** Uses lightweight global state management for clean component drilling on map position and geospatial selections.
+Live demo: [https://tdp-gis-api-demo.vercel.app/](https://tdp-gis-api-demo.vercel.app/)
 
-## 🛠️ Technology Stack
-- **Framework:** [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool:** [Vite](https://vitejs.dev/)
-- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Map Engine:** [Mapbox GL JS](https://www.mapbox.com/mapbox-gl-js) + [React Map GL](https://visgl.github.io/react-map-gl/)
-- **Utilities:** [Axios](https://axios-http.com/) (HTTP), [Lodash](https://lodash.com/) (Debouncing)
+## Features
+- Mapbox map rendering with markers, popup details, and scale/navigation controls.
+- Workspace-aware entity filters (multi-select) for narrowing search.
+- Debounced text search with cancellation via `AbortController`.
+- Result attribution by entity (shows entity label per record and summary counts).
+- Server-side proxy/BFF pattern for backend calls (tokens stay off the client bundle).
+- Workspace API token is injected only on server proxy routes (`api/workspace-entities.ts`, `api/workspace-entity-search.ts`).
 
-## ⚙️ Prerequisites
-Ensure that your development environment includes:
-- **Node.js** (v18.0.0 or higher recommended)
-- **Git**
+## Tech Stack
+- React 19 + TypeScript
+- Vite 8
+- Tailwind CSS v4
+- Mapbox GL + `react-map-gl`
+- Axios + Lodash debounce
 
-## 🔧 Installation & Setup
+## Prerequisites
+- Node.js 18+ (recommended)
+- npm
 
-1. **Install Dependencies:**
-   Navigate into the project directory and install the necessary npm packages:
-   ```bash
-   npm install
-   ```
+## Setup
 
-2. **Configure Environment Variables:**
-   This project relies on Mapbox. You MUST provide a Mapbox Access Token for the map to render. 
-   Create a `.env` file in the root of the frontend folder and add your key prefixed with `VITE_` so the client can read it:
+1. Install dependencies:
 
-   ```env
-   VITE_MAPBOX_ACCESS_TOKEN=pk.your_mapbox_access_token_here
-   ```
-
-3. **Start the Development Server:**
-   Boot up the Vite build engine (make sure to restart the server if you modify your `.env` file):
-   ```bash
-   npm run dev
-   ```
-
-4. **Navigate to the App:**
-   Open [http://localhost:5173/](http://localhost:5173/) in your browser.
-
-## 🏗️ Building for Production
-To bundle the application via TypeScript transpilation and Vite:
 ```bash
-npm run build
+npm install
 ```
-The optimized files will be generated securely inside the `/dist` directory.
+
+2. Copy environment template (`.env.example` -> `.env`) and edit values.
+
+3. Fill `.env` values:
+
+```env
+REST_API_BASE_URL=https://your-api-host.example/api
+GIS_API_BASE_URL=https://your-gis-host.example/api
+WORKSPACE_ID=...
+WORKSPACE_ACCESS_TOKEN=...
+VITE_MAPBOX_ACCESS_TOKEN=pk....
+```
+
+> `.env` is ignored by git. `.env.example` is safe to commit.
+
+4. Start local dev:
+
+```bash
+npm run dev
+```
+
+Open <http://localhost:5173>.
+
+## API Routing Model
+
+### Local dev (`npm run dev`)
+Vite proxies same-origin browser calls to backend origins from `.env`:
+- `/api/gis/*`
+- `/api/workspace-entities`
+- `/api/workspace-entity-search?entityId=...&q=...`
+
+`WORKSPACE_ACCESS_TOKEN` is attached server-side in the proxy request headers.
+
+### Deployment (Vercel)
+Serverless routes under `api/` handle upstream proxying:
+- `api/gis/[...path].ts`
+- `api/workspace-entities.ts`
+- `api/workspace-entity-search.ts`
+
+They validate incoming requests (`api/verifyVercelRequest.ts`) and read server env only.
+
+## Search Flow
+- `useWorkspaceEntities` loads available workspace entities.
+- `useWorkspaceGeoSearch` calls `/api/workspace-entity-search` for each selected entity.
+- Responses are normalized by `mapWorkspaceSearchResults.ts`.
+- Dropdown and map consume unified `GeoFeature[]` from context.
+
+## Scripts
+- `npm run dev` - run Vite dev server
+- `npm run build` - type-check and build production assets
+- `npm run preview` - preview built assets
+- `npm run lint` - lint project
