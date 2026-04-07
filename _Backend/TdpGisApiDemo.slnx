@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/TdpGis.Api.Tests/TdpGis.Api.Tests.csproj" Id="e3783b12-8f0e-4efb-b0f4-576041217b29" />
+  </Folder>
   <Project Path="TdpGis.AdminApplication/TdpGis.AdminApplication.csproj" Id="1527c588-0219-43e9-9a34-31d625713839" />
   <Project Path="TdpGis.Api/TdpGis.Api.csproj" Id="00d5e567-a370-4bc6-9150-ff1cfe24eb4e" />
   <Project Path="TdpGis.Application/TdpGis.Application.csproj" />
