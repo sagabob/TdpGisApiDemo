@@ -12,7 +12,7 @@ public sealed class GetGisWorkspaceEntitiesRequest
     /// <summary>
     ///     Shown in Swagger; send the workspace access token here, or use <c>Authorization: Bearer</c> instead.
     /// </summary>
-    [FromHeader(GisWorkspaceAccess.AccessTokenHeader, false)]
+    [FromHeader(GisWorkspaceAccess.AccessTokenHeader)]
     [DefaultValue("")]
-    public string? AccessToken { get; set; }
+    public required string AccessToken { get; set; }
 }

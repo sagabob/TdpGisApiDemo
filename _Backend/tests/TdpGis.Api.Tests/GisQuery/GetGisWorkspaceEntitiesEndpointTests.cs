@@ -12,6 +12,7 @@ using Xunit;
 
 namespace TdpGis.Api.Tests.GisQuery;
 
+[Collection("ApiIntegration")]
 public class GetGisWorkspaceEntitiesEndpointTests
 {
     [Fact]

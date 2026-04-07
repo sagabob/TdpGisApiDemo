@@ -9,7 +9,7 @@ public record SearchGisEntityRequest(Guid WorkspaceId, Guid EntityId, string Sea
     /// <summary>
     ///     Shown in Swagger; send the workspace access token here, or use <c>Authorization: Bearer</c> instead.
     /// </summary>
-    [FromHeader(GisWorkspaceAccess.AccessTokenHeader, false)]
+    [FromHeader(GisWorkspaceAccess.AccessTokenHeader)]
     [DefaultValue("")]
-    public string? AccessToken { get; init; }
+    public required string AccessToken { get; init; }
 }
