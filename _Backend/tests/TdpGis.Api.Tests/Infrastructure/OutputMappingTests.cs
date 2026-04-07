@@ -49,7 +49,8 @@ public class OutputMappingTests
         var geometry = new BsonDocument
         {
             { "type", "Polygon" },
-            { "coordinates", new BsonArray
+            {
+                "coordinates", new BsonArray
                 {
                     new BsonArray
                     {

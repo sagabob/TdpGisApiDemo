@@ -49,3 +49,5 @@ app.UseDefaultExceptionHandler()
     .UseSwaggerGen();
 
 app.Run();
+
+public partial class Program;

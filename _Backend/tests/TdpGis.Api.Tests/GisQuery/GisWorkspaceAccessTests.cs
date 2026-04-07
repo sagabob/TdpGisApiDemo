@@ -16,10 +16,11 @@ public class GisWorkspaceAccessTests
         var repository = new Mock<IGisConfigurationService>(MockBehavior.Strict);
         var request = new DefaultHttpContext().Request;
 
-        var result = await GisWorkspaceAccess.TryValidateAsync(repository.Object, Guid.Empty, request, CancellationToken.None);
+        var result =
+            await GisWorkspaceAccess.TryValidateAsync(repository.Object, Guid.Empty, request, CancellationToken.None);
 
         result.Should().NotBeNull();
-        result!.Value.StatusCode.Should().Be(400);
+        result.Value.StatusCode.Should().Be(400);
         result.Value.Message.Should().Contain("workspace id");
     }
 
@@ -29,7 +30,9 @@ public class GisWorkspaceAccessTests
         var repository = new Mock<IGisConfigurationService>(MockBehavior.Strict);
         var request = new DefaultHttpContext().Request;
 
-        var result = await GisWorkspaceAccess.TryValidateAsync(repository.Object, Guid.NewGuid(), request, CancellationToken.None);
+        var result =
+            await GisWorkspaceAccess.TryValidateAsync(repository.Object, Guid.NewGuid(), request,
+                CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Value.StatusCode.Should().Be(400);
@@ -48,7 +51,8 @@ public class GisWorkspaceAccessTests
             .Setup(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, "bad-token", It.IsAny<CancellationToken>()))
             .ReturnsAsync((GisWorkspaceAccessToken?)null);
 
-        var result = await GisWorkspaceAccess.TryValidateAsync(repository.Object, workspaceId, request, CancellationToken.None);
+        var result =
+            await GisWorkspaceAccess.TryValidateAsync(repository.Object, workspaceId, request, CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Value.StatusCode.Should().Be(401);
@@ -78,7 +82,8 @@ public class GisWorkspaceAccessTests
             .Setup(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, "good-token", It.IsAny<CancellationToken>()))
             .ReturnsAsync(tokenRow);
 
-        var result = await GisWorkspaceAccess.TryValidateAsync(repository.Object, workspaceId, request, CancellationToken.None);
+        var result =
+            await GisWorkspaceAccess.TryValidateAsync(repository.Object, workspaceId, request, CancellationToken.None);
 
         result.Should().BeNull();
     }
