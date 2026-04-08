@@ -12,7 +12,7 @@ public class GisMongoQueryRepositoryTests
     [Fact]
     public async Task SearchAsync_ShouldFilterCaseInsensitive_AndRespectMaxResults()
     {
-        using var runner = MongoDbRunner.Start(singleNodeReplSet: true);
+        using var runner = MongoDbRunner.Start();
         var client = new MongoClient(runner.ConnectionString);
         var dbName = $"tdp_{Guid.NewGuid():N}";
         var collection = client.GetDatabase(dbName).GetCollection<BsonDocument>("places");
@@ -41,7 +41,7 @@ public class GisMongoQueryRepositoryTests
     [Fact]
     public async Task SearchAsync_ShouldReturnEmpty_WhenNoMatches()
     {
-        using var runner = MongoDbRunner.Start(singleNodeReplSet: true);
+        using var runner = MongoDbRunner.Start();
         var client = new MongoClient(runner.ConnectionString);
         var dbName = $"tdp_{Guid.NewGuid():N}";
         var collection = client.GetDatabase(dbName).GetCollection<BsonDocument>("places");
