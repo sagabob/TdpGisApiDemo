@@ -29,4 +29,10 @@
     <ProjectReference Include="..\..\TdpGis.Domain\TdpGis.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

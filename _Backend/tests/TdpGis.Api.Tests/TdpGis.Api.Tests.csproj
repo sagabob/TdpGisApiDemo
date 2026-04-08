@@ -29,4 +29,8 @@
     <ProjectReference Include="..\..\TdpGis.Infrastructure\TdpGis.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
