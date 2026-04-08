@@ -14,6 +14,7 @@ public class GisMongoQueryRepositoryTests
     {
         using var runner = MongoDbRunner.Start();
         var client = new MongoClient(runner.ConnectionString);
+        await WaitUntilReadyAsync(client, TestContext.Current.CancellationToken);
         var dbName = $"tdp_{Guid.NewGuid():N}";
         var collection = client.GetDatabase(dbName).GetCollection<BsonDocument>("places");
 
@@ -43,6 +44,7 @@ public class GisMongoQueryRepositoryTests
     {
         using var runner = MongoDbRunner.Start();
         var client = new MongoClient(runner.ConnectionString);
+        await WaitUntilReadyAsync(client, TestContext.Current.CancellationToken);
         var dbName = $"tdp_{Guid.NewGuid():N}";
         var collection = client.GetDatabase(dbName).GetCollection<BsonDocument>("places");
 
@@ -61,5 +63,29 @@ public class GisMongoQueryRepositoryTests
             TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
+    }
+
+    private static async Task WaitUntilReadyAsync(IMongoClient client, CancellationToken ct)
+    {
+        // Mongo2Go can return before mongod is fully ready on some environments.
+        for (var attempt = 0; attempt < 30; attempt++)
+        {
+            try
+            {
+                await client.GetDatabase("admin")
+                    .RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: ct);
+                return;
+            }
+            catch (MongoConnectionException) when (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(200, ct);
+            }
+            catch (TimeoutException) when (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(200, ct);
+            }
+        }
+
+        throw new TimeoutException("Mongo2Go server did not become ready in time.");
     }
 }
