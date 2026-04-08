@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
-using TdpGis.Api.GisQuery;
 using TdpGis.Api.GisQuery.Helpers;
 using TdpGis.Application.Abstractions;
 using TdpGis.Domain;

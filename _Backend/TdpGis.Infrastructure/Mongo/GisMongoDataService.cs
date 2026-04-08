@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using MongoDB.Bson;
-using MongoDB.Driver;
 using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Application.Abstractions;
 using TdpGis.Domain;
@@ -9,7 +7,7 @@ using TdpGis.Infrastructure.Helpers;
 
 namespace TdpGis.Infrastructure.Mongo;
 
-public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider, MongoClientCache mongoClients)
+public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider, IGisMongoQueryRepository mongoQueryRepository)
     : IGisDataService
 {
     public async Task<List<JsonObject>> GetSearchedInstances(GisConnection gisConnection, string searchText,
@@ -17,20 +15,15 @@ public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider, M
     {
         var connectionString = gisConnection.DataSource.ConnectionString.Trim();
         var resolvedDatabaseName = mongoMetadataProvider.GetDatabaseName(connectionString);
-        var client = mongoClients.GetOrCreate(connectionString);
-        var database = client.GetDatabase(resolvedDatabaseName);
-
-        var collection = database.GetCollection<BsonDocument>(gisConnection.Entity);
-
         var rows = new List<JsonObject>();
-
-        if (collection == null) return rows;
-
-        var queryExpr = new BsonRegularExpression(new Regex(searchText, RegexOptions.IgnoreCase));
-
-        var filterByText = Builders<BsonDocument>.Filter.Regex(gisConnection.QueryField, queryExpr);
-
-        var bsonResults = await collection.Find(filterByText).Limit(maxResults).ToListAsync(cancellationToken);
+        var bsonResults = await mongoQueryRepository.SearchAsync(
+            connectionString,
+            resolvedDatabaseName,
+            gisConnection.Entity,
+            gisConnection.QueryField,
+            searchText,
+            maxResults,
+            cancellationToken);
 
         bsonResults.ForEach(x => rows.Add(OutputMapping.ConvertFromBson(x, gisConnection.PropertyMappings)));
 

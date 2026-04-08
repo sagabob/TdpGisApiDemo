@@ -195,7 +195,8 @@ public class SearchGisEntityEndpointTests
         repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
             Times.Once);
         repository.Verify(r => r.GetGisConnectionDtoByEntityId(workspaceId, entityId), Times.Once);
-        dataService.Verify(d => d.GetSearchedInstances(selectedEntity, searchedPhrase, 10, It.IsAny<CancellationToken>()),
+        dataService.Verify(
+            d => d.GetSearchedInstances(selectedEntity, searchedPhrase, 10, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

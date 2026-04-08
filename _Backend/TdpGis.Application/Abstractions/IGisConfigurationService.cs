@@ -20,5 +20,5 @@ public interface IGisConfigurationService
     /// </summary>
     List<GisConnectionDto> GetGisConnectionDtoByWorkspaceId(Guid workspaceId);
 
-    Task<GisConnection?> GetGisConnectionDtoByEntityId(Guid entityId, Guid workspaceId);
+    Task<GisConnection?> GetGisConnectionDtoByEntityId(Guid workspaceId, Guid entityId);
 }

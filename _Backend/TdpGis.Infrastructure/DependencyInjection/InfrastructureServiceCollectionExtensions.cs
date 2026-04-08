@@ -21,6 +21,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<MongoClientCache>();
 
+        services.AddScoped<IGisMongoQueryRepository, GisMongoQueryRepository>();
+
         services.AddScoped<IMongoMetadataProvider, MongoMetadataProvider>();
 
         services.AddScoped<IGisDataService, GisMongoDataService>();
