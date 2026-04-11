@@ -1,9 +1,13 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using TdpGis.AdminApplication.DependencyInjection;
+using TdpGis.Endpoints.Security;
 using TdpGis.Infrastructure.DependencyInjection;
 using TdpGis.Infrastructure.Persistence;
 
@@ -26,7 +30,41 @@ builder.Services
     .AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
 
-builder.Services.AddAuthorization();
+builder.Services.Configure<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    options.AccessDeniedPath = "/Home/AccessDenied";
+});
+
+// Ensure 403 from [Authorize] uses the cookie handler so AccessDeniedPath is honored (not OIDC forbid).
+builder.Services.Configure<AuthenticationOptions>(options =>
+{
+    options.DefaultForbidScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+});
+
+// Use authorization code flow only (not implicit id_token). Avoids AADSTS700054 unless you enable
+// "ID tokens" under Implicit grant in the Entra app registration.
+// MapInboundClaims = false keeps claim types such as "roles" as issued (needed for app roles).
+// RoleClaimType = "roles" enables User.IsInRole(...) for Entra app roles (AzureAd:AdminAppRole / ViewerAppRole).
+builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, options =>
+{
+    options.ResponseType = OpenIdConnectResponseType.Code;
+    options.SaveTokens = true;
+    options.MapInboundClaims = false;
+    options.TokenValidationParameters.RoleClaimType = "roles";
+});
+
+var adminAppRole = builder.Configuration["AzureAd:AdminAppRole"] ?? "Gis.Admin";
+var viewerAppRole = builder.Configuration["AzureAd:ViewerAppRole"] ?? "Gis.Viewer";
+builder.Services.AddAuthorization(options =>
+{
+    // Do not use RequireRole alone: Entra app roles use the "roles" claim; RoleClaimType on the identity may not match.
+    options.AddPolicy("GisPortalAccess", policy =>
+        policy.RequireAssertion(ctx =>
+            EntraAppRoleClaims.HasRole(ctx.User, adminAppRole) ||
+            EntraAppRoleClaims.HasRole(ctx.User, viewerAppRole)));
+    options.AddPolicy("GisConfigurationAdmin", policy =>
+        policy.RequireAssertion(ctx => EntraAppRoleClaims.HasRole(ctx.User, adminAppRole)));
+});
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"])

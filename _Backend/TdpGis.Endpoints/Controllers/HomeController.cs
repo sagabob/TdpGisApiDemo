@@ -1,15 +1,18 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using TdpGis.AdminApplication.AppModels;
 using TdpGis.AdminApplication.Services;
 using TdpGis.Endpoints.Models;
+using TdpGis.Endpoints.Security;
 
 namespace TdpGis.Endpoints.Controllers;
 
-[Authorize]
-public class HomeController(IGisAdminAppService gisAdmin) : Controller
+[Authorize(Policy = "GisPortalAccess")]
+public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configuration) : Controller
 {
+    private string AdminAppRole => configuration["AzureAd:AdminAppRole"] ?? "Gis.Admin";
     [AllowAnonymous]
     public IActionResult Index()
     {
@@ -20,7 +23,8 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     {
         var data = gisAdmin.GetConfigurationPageData();
         var model = MapToPageViewModel(data);
-        if (gisEdit.HasValue)
+        ApplyViewerAccess(model);
+        if (gisEdit.HasValue && model.CanManageConfiguration)
         {
             var conn = gisAdmin.GetGisConnectionById(gisEdit.Value);
             if (conn is not null)
@@ -35,6 +39,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveMongoConnection(
         [Bind(Prefix = "MongoForm")] MongoConnectionFormViewModel model, CancellationToken cancellationToken)
@@ -60,6 +65,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveGisConnection([Bind(Prefix = "Form")] GisConnectionFormViewModel model,
         CancellationToken cancellationToken)
@@ -100,6 +106,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AssignEntitiesToWorkspace(
         [Bind(Prefix = "AssignEntitiesForm")] AssignEntitiesWorkspaceFormViewModel model,
@@ -127,6 +134,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveWorkspace([Bind(Prefix = "WorkspaceForm")] WorkspaceFormViewModel model,
         CancellationToken cancellationToken)
@@ -153,6 +161,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateWorkspaceAccessToken(
         [Bind(Prefix = "AccessTokenForm")] AccessTokenFormViewModel model, CancellationToken cancellationToken)
@@ -185,6 +194,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateWorkspaceAccessToken(
         [Bind(Prefix = "UpdateToken")] UpdateWorkspaceAccessTokenFormViewModel model,
@@ -220,6 +230,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     public async Task<IActionResult> ValidateMongoConnection([FromBody] MongoValidationRequest request,
         CancellationToken cancellationToken)
     {
@@ -235,6 +246,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     public async Task<IActionResult> GetCollectionsForSavedConnection([FromBody] SavedConnectionRequest request,
         CancellationToken cancellationToken)
     {
@@ -246,6 +258,7 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "GisConfigurationAdmin")]
     public async Task<IActionResult> GetMongoSampleForSavedConnection([FromBody] SavedConnectionSampleRequest request,
         CancellationToken cancellationToken)
     {
@@ -269,9 +282,23 @@ public class HomeController(IGisAdminAppService gisAdmin) : Controller
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
+    /// <summary>Shown when a signed-in user has neither Gis.Admin nor Gis.Viewer (cookie access denied redirect).</summary>
+    [AllowAnonymous]
+    public IActionResult AccessDenied()
+    {
+        return View();
+    }
+
     private GisConnectionPageViewModel BuildPageModel()
     {
-        return MapToPageViewModel(gisAdmin.GetConfigurationPageData());
+        var model = MapToPageViewModel(gisAdmin.GetConfigurationPageData());
+        ApplyViewerAccess(model);
+        return model;
+    }
+
+    private void ApplyViewerAccess(GisConnectionPageViewModel model)
+    {
+        model.CanManageConfiguration = EntraAppRoleClaims.HasRole(User, AdminAppRole);
     }
 
     private static GisConnectionPageViewModel MapToPageViewModel(GisConfigurationPageData data)

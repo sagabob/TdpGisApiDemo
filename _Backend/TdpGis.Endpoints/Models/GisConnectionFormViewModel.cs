@@ -113,4 +113,7 @@ public class GisConnectionPageViewModel
 
     /// <summary>When set, row fields use these values (e.g. after a failed update post).</summary>
     public UpdateWorkspaceAccessTokenFormViewModel? UpdateTokenForm { get; set; }
+
+    /// <summary>True when the signed-in user has the Entra app role configured as <c>AzureAd:AdminAppRole</c>.</summary>
+    public bool CanManageConfiguration { get; set; }
 }

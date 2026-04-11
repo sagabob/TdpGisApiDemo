@@ -2,9 +2,10 @@
 @model GisConnectionPageViewModel
 @{
     ViewData["Title"] = "Query Configuration";
+    var canManage = Model.CanManageConfiguration;
     var configSuccessMessage = TempData["SuccessMessage"] as string;
     var configNewAccessTokenPlain = TempData["CreatedAccessTokenPlain"] as string;
-    var forceGisConfigTab = Model.Form.GisConnectionId.HasValue && Model.Form.GisConnectionId.Value != Guid.Empty;
+    var forceGisConfigTab = canManage && Model.Form.GisConnectionId.HasValue && Model.Form.GisConnectionId.Value != Guid.Empty;
 
     static string MaskConnectionString(string value)
     {
@@ -45,9 +46,16 @@
 }
 
 <div class="row g-4">
-<div class="col-lg-8">
+<div class="@(canManage ? "col-lg-8" : "col-lg-12")">
 <h1 class="h3">GIS Configuration</h1>
-<p class="text-muted">MongoDB connections, GIS entities, and workspaces with access tokens.</p>
+@if (canManage)
+{
+    <p class="text-muted">MongoDB connections, GIS entities, and workspaces with access tokens.</p>
+}
+else
+{
+    <p class="text-muted">Read-only summary (GIS Viewer role). Full configuration tabs require the GIS Admin role.</p>
+}
 
 @if (!string.IsNullOrEmpty(configSuccessMessage) && string.IsNullOrEmpty(configNewAccessTokenPlain))
 {
@@ -56,17 +64,167 @@
 
 <ul class="nav nav-tabs mb-3" id="configTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="mongo-tab" data-bs-toggle="tab" data-bs-target="#mongo-tab-pane" type="button" role="tab">1. MongoDB</button>
+        <button class="nav-link @(canManage ? "" : "active")" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary-tab-pane" type="button" role="tab">Summary</button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="gis-tab" data-bs-toggle="tab" data-bs-target="#gis-tab-pane" type="button" role="tab">2. GIS connection</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="workspace-tab" data-bs-toggle="tab" data-bs-target="#workspace-tab-pane" type="button" role="tab">3. Workspace &amp; token</button>
-    </li>
+    @if (canManage)
+    {
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="mongo-tab" data-bs-toggle="tab" data-bs-target="#mongo-tab-pane" type="button" role="tab">1. MongoDB</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="gis-tab" data-bs-toggle="tab" data-bs-target="#gis-tab-pane" type="button" role="tab">2. GIS connection</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="workspace-tab" data-bs-toggle="tab" data-bs-target="#workspace-tab-pane" type="button" role="tab">3. Workspace &amp; token</button>
+        </li>
+    }
 </ul>
 
 <div class="tab-content border border-top-0 rounded-bottom p-3 bg-white">
+<div class="tab-pane fade @(canManage ? "" : "show active")" id="summary-tab-pane" role="tabpanel" aria-labelledby="summary-tab">
+    <p class="text-muted small mb-3">Read-only overview of everything stored for this app.</p>
+
+    <h2 class="h6">Saved MongoDB connections</h2>
+    <div class="table-responsive mb-4">
+        <table class="table table-sm table-bordered align-middle">
+            <thead>
+            <tr>
+                <th scope="col">Data source id</th>
+                <th scope="col">Connection string</th>
+            </tr>
+            </thead>
+            <tbody>
+            @if (Model.SavedMongoConnections.Count == 0)
+            {
+                <tr><td colspan="2" class="text-muted">None</td></tr>
+            }
+            else
+            {
+                foreach (var ds in Model.SavedMongoConnections)
+                {
+                    <tr>
+                        <td class="text-nowrap font-monospace small">@ds.Id</td>
+                        <td class="small">@MaskConnectionString(ds.ConnectionString)</td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <h2 class="h6">Saved GIS entities</h2>
+    <div class="table-responsive mb-4">
+        <table class="table table-sm table-bordered align-middle">
+            <thead>
+            <tr>
+                <th scope="col">GIS connection id</th>
+                <th scope="col">Name</th>
+                <th scope="col">Collection</th>
+                <th scope="col">Mongo data source id</th>
+                <th scope="col">Workspace</th>
+            </tr>
+            </thead>
+            <tbody>
+            @if (Model.ExistingConnections.Count == 0)
+            {
+                <tr><td colspan="5" class="text-muted">None</td></tr>
+            }
+            else
+            {
+                foreach (var c in Model.ExistingConnections.OrderBy(x => x.Name))
+                {
+                    var wsLabel = c.GisWorkspace != null
+                        ? $"{c.GisWorkspace.Name} ({c.GisWorkspace.Id})"
+                        : (c.GisWorkspaceId.HasValue ? c.GisWorkspaceId.Value.ToString() : "—");
+                    <tr>
+                        <td class="text-nowrap font-monospace small">@c.Id</td>
+                        <td>@c.Name</td>
+                        <td class="text-muted">@c.Entity</td>
+                        <td class="text-nowrap font-monospace small">@c.DataSourceId</td>
+                        <td class="small">@wsLabel</td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <h2 class="h6">Workspaces</h2>
+    <div class="table-responsive mb-4">
+        <table class="table table-sm table-bordered align-middle">
+            <thead>
+            <tr>
+                <th scope="col">Workspace id</th>
+                <th scope="col">Name</th>
+                <th scope="col">Entities</th>
+                <th scope="col">Tokens</th>
+            </tr>
+            </thead>
+            <tbody>
+            @if (Model.Workspaces.Count == 0)
+            {
+                <tr><td colspan="4" class="text-muted">None</td></tr>
+            }
+            else
+            {
+                foreach (var w in Model.Workspaces.OrderBy(x => x.Name))
+                {
+                    <tr>
+                        <td class="text-nowrap font-monospace small">@w.Id</td>
+                        <td>@w.Name</td>
+                        <td>@w.Entities.Count</td>
+                        <td>@w.AccessTokens.Count</td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <h2 class="h6">Access token ids</h2>
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle">
+            <thead>
+            <tr>
+                <th scope="col">Token id</th>
+                <th scope="col">Workspace</th>
+                <th scope="col">Name</th>
+                <th scope="col">Expires</th>
+            </tr>
+            </thead>
+            <tbody>
+            @{
+                var summaryTokens = Model.Workspaces
+                    .SelectMany(w => w.AccessTokens.Select(t => (Workspace: w, Token: t)))
+                    .OrderBy(x => x.Workspace.Name)
+                    .ThenBy(x => x.Token.Name)
+                    .ToList();
+            }
+            @if (summaryTokens.Count == 0)
+            {
+                <tr><td colspan="4" class="text-muted">None</td></tr>
+            }
+            else
+            {
+                foreach (var row in summaryTokens)
+                {
+                    var t = row.Token;
+                    var w = row.Workspace;
+                    <tr>
+                        <td class="text-nowrap font-monospace small">@t.Id</td>
+                        <td>@w.Name</td>
+                        <td>@t.Name</td>
+                        <td class="text-nowrap">@FormatAccessTokenExpiryDate(t.ExpiredDateTime)</td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (canManage)
+{
 <div class="tab-pane fade show active" id="mongo-tab-pane" role="tabpanel" aria-labelledby="mongo-tab">
     <div class="card mb-3">
         <div class="card-body">
@@ -522,9 +680,12 @@
         </div>
     }
 </div>
+}
 </div>
 </div>
 
+@if (canManage)
+{
 <div class="col-lg-4">
     <h2 class="h5">Configured Entities</h2>
     @if (Model.ExistingConnections.Count == 0)
@@ -552,10 +713,13 @@
         </div>
     }
 </div>
+}
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial"/>
+    @if (canManage)
+    {
     <script>
         (function () {
             const validateBtn = document.getElementById('validateMongoBtn');
@@ -981,4 +1145,5 @@
             }
         })();
     </script>
+    }
 }

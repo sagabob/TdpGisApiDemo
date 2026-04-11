@@ -24,15 +24,6 @@ public class AccountController : Controller
     }
 
     [HttpPost]
-    [ActionName("Login")]
-    [ValidateAntiForgeryToken]
-    [AllowAnonymous]
-    public IActionResult LoginViaPost(string? returnUrl = null)
-    {
-        return Login(returnUrl);
-    }
-
-    [HttpPost]
     [ValidateAntiForgeryToken]
     public IActionResult Logout()
     {

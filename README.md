@@ -2,7 +2,7 @@
 
 The **end goal** of this repository is the **GIS map frontend** in **`_Frontend/`**: a browser app that queries **`TdpGis.Api`** and displays workspace GIS features on a Mapbox map.
 
-The **backend** in **`_Backend/`** powers that API and a **cookie-authenticated admin** (`TdpGis.Endpoints`) where you configure MongoDB connections, GIS entities, workspaces, and access tokens. Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from **MongoDB** using saved configuration.
+The **backend** in **`_Backend/`** powers that API and an **MVC admin** (`TdpGis.Endpoints`) where you configure MongoDB connections, GIS entities, workspaces, and access tokens. Admins sign in with **Microsoft Entra ID** (OpenID Connect); **app roles** control who can view or edit configuration. The **GIS REST API** (`TdpGis.Api`) is **not** secured with Entra—it accepts **workspace access tokens** (`X-Access-Token` / Bearer). Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from **MongoDB** using saved configuration.
 
 ## Live demos
 
@@ -40,7 +40,7 @@ More detail: `_Frontend/README.md`.
 
 ## Backend (`_Backend/`)
 
-The backend exposes two hosts: a **FastEndpoints REST API** (`TdpGis.Api`) for GIS queries (used by the frontend) and a **cookie-authenticated MVC admin** (`TdpGis.Endpoints`) for configuration.
+The backend exposes two hosts: a **FastEndpoints REST API** (`TdpGis.Api`) for GIS queries (used by the frontend) and an **MVC admin** (`TdpGis.Endpoints`) for configuration, with **Microsoft Entra ID** sign-in and **role-based** access to the configuration UI.
 
 ### Architecture (Clean Architecture)
 
@@ -54,7 +54,7 @@ The backend follows **Clean Architecture**: **dependency direction points inward
 | **Application (end-user)** | `TdpGis.Application` | **Use cases** for **end users**: ports such as `IGisConfigurationService`, `IGisDataService`, plus DTOs. Depends only on **Domain**. |
 | **Application (admin)** | `TdpGis.AdminApplication` | **Use cases** for **admins**: `IGisAdminAppService`, configuration **repository** contract (`IGisConfigurationRepository`), and related types. Depends only on **Domain**. |
 | **Infrastructure** | `TdpGis.Infrastructure` | **Adapters**: EF Core (PostgreSQL), MongoDB drivers, repository and service implementations. Depends on **Application**, **AdminApplication**, and **Domain**; registers implementations in **`AddInfrastructure`**. |
-| **Presentation / composition** | `TdpGis.Endpoints`, `TdpGis.Api` | **Hosts**: MVC controllers or FastEndpoints, HTTP concerns, authentication at the edge. They reference **Infrastructure** to compose the graph at startup and expose the app to the outside world. |
+| **Presentation / composition** | `TdpGis.Endpoints`, `TdpGis.Api` | **Hosts**: MVC or FastEndpoints, HTTP concerns. **`TdpGis.Endpoints`**: Entra ID + cookies. **`TdpGis.Api`**: workspace access tokens only. Both reference **Infrastructure** to compose the graph at startup. |
 
 **`TdpGis.Api`** uses the **end-user** application layer; **`TdpGis.Endpoints`** uses the **admin** application layer. Both share **Infrastructure** and **Domain**; only **hosting** and **transport** differ (REST vs Razor).
 
@@ -64,7 +64,7 @@ All backend projects live under `_Backend/`:
 
 | Project | Description |
 |--------|-------------|
-| **TdpGis.Endpoints** | Runnable **MVC** app: Razor views, static assets, **cookie authentication** for the configuration UI. References **Domain**, **AdminApplication**, and **Infrastructure**. Entry point: `Program.cs`. |
+| **TdpGis.Endpoints** | Runnable **MVC** app: Razor views, static assets, **Entra ID (OIDC) + cookie session** for the configuration UI, **app-role** authorization. References **Domain**, **AdminApplication**, and **Infrastructure**. Entry point: `Program.cs`. |
 | **TdpGis.Api** | Runnable **FastEndpoints** host: GIS query endpoints, **Swagger/OpenAPI**. References **Application** and **Infrastructure**. Entry point: `Program.cs`. |
 | **TdpGis.Infrastructure** | EF Core **`GisAppDbContext`**, Fluent configurations, **migrations**, PostgreSQL access, **`GisConfigurationRepository`**, MongoDB helpers (`MongoClientCache`, `MongoMetadataProvider`, **`GisMongoDataService`**). Registers **Data Protection** key persistence into the same database for the MVC host (see `EndpointsDataProtectionExtensions`). |
 | **TdpGis.AdminApplication** | **Admin** use cases and UI orchestration: **`IGisAdminAppService`** / **`GisAdminAppService`** for the configuration page. |
@@ -93,9 +93,13 @@ Base `appsettings.json` files may leave the connection string empty; ensure it i
 
 **Cookie auth keys:** The admin app stores **ASP.NET Data Protection** keys in PostgreSQL (`PersistKeysToDbContext<GisAppDbContext>`) so authentication cookies remain valid across container restarts without a file volume. Apply EF migrations **before** relying on login in production or Docker; the migrations include the Data Protection keys table.
 
-#### Admin dashboard sign-in (`TdpGis.Endpoints` only)
+#### Microsoft Entra ID sign-in (`TdpGis.Endpoints` only)
 
-The configuration UI requires authentication. Configure **`AdminDashboard:User`** and **`AdminDashboard:Password`** (see `appsettings.json` / `AdminDashboardOptions`). If the password is not set, login shows a configuration error.
+The configuration UI uses **OpenID Connect** against **Microsoft Entra ID**. Set **`AzureAd`** in configuration (`Instance`, `TenantId`, `ClientId`, `ClientSecret`, `CallbackPath`, and app role value strings `AdminAppRole` / `ViewerAppRole`, which must match each app role’s **Value** in the app registration). Assign users or groups to those roles under **Enterprise applications** → your app → **Users and groups**.
+
+**Docker / environment variables** use double underscores, e.g. `AzureAd__TenantId`, `AzureAd__ClientSecret`, `AzureAd__AdminAppRole`, `AzureAd__ViewerAppRole`.
+
+See `TdpGis.Endpoints/appsettings.json` for placeholders.
 
 ### Database
 
@@ -122,7 +126,7 @@ Default URLs (see `Properties/launchSettings.json`): **https://localhost:7036** 
 
 **Health checks** (anonymous; no cookie required): **`GET /health`** (liveness) and **`GET /health/ready`** (readiness, includes a database check). In Development, HTTPS redirection is skipped for `/health*` so plain HTTP probes work.
 
-Sign in at **`/Account/Login`**, then open the configuration hub.
+Use **`/Account/Login`** (OIDC challenge to Microsoft), then open **`/Home/Configuration`**. Users need the **Gis Viewer** or **Gis Admin** app role (or they are sent to **`/Home/AccessDenied`**).
 
 ### Run the REST API (`TdpGis.Api`)
 
@@ -151,12 +155,21 @@ GIS endpoints require a **valid workspace access token**: header **`X-Access-Tok
 | Route | Purpose |
 |-------|---------|
 | `/` (`Home/Index`) | Public landing (**`Project`** view). |
-| `/Account/Login` | Admin sign-in. |
-| `/Home/Configuration` | **Configuration** hub (authenticated): Mongo connections, GIS connections, workspaces, entity assignment, access tokens. |
+| `/Account/Login` | Starts Entra ID sign-in (OIDC challenge). |
+| `/Home/Configuration` | **Configuration** hub (requires **Gis Viewer** or **Gis Admin**): see **Role behavior** below. |
+| `/Home/AccessDenied` | Shown when the user is signed in but has **no** assigned GIS app role. |
 
-Tab **2 (GIS connection)** supports editing an existing GIS connection via the picker and **`?gisEdit={guid}`**.
+**Role behavior**
 
-**Form POSTs** on the configuration page target **`HomeController`** actions (with **`[ValidateAntiForgeryToken]`** where applicable): `SaveMongoConnection`, `SaveGisConnection`, `AssignEntitiesToWorkspace`, `SaveWorkspace`, `CreateWorkspaceAccessToken`, `UpdateWorkspaceAccessToken`.
+| App role | Configuration UI |
+|----------|-------------------|
+| **Gis Viewer** (`ViewerAppRole`) | **Summary** tab only: read-only tables of Mongo data sources, GIS entities, workspaces, and access token IDs. |
+| **Gis Admin** (`AdminAppRole`) | **Summary** plus tabs **1–3** (MongoDB, GIS connection, Workspace & token), including the **Configured Entities** sidebar. All mutating actions and GIS helper JSON APIs require this role. |
+| *(neither)* | Redirect to **`/Home/AccessDenied`**. |
+
+Tab **2 (GIS connection)** supports editing an existing GIS connection via the picker and **`?gisEdit={guid}`** (admins only).
+
+**Form POSTs** (admin-only) target **`HomeController`** actions (with **`[ValidateAntiForgeryToken]`** where applicable): `SaveMongoConnection`, `SaveGisConnection`, `AssignEntitiesToWorkspace`, `SaveWorkspace`, `CreateWorkspaceAccessToken`, `UpdateWorkspaceAccessToken`.
 
 The GIS tab also invokes JSON **POST** actions on **`HomeController`**: `ValidateMongoConnection`, `GetCollectionsForSavedConnection`, `GetMongoSampleForSavedConnection` (called from `Index.cshtml` via `fetch`).
 
@@ -167,8 +180,8 @@ The admin app is **ASP.NET Core MVC**: Razor views under **`_Backend/TdpGis.Endp
 ## Features (summary)
 
 - **Frontend**: workspace entity filters, debounced search against **`TdpGis.Api`**, Mapbox markers and detail overlay (BFF keeps access tokens server-side).
-- **REST API**: workspace-scoped GIS entity listing and search, token-based access.
-- **Admin**: save and validate **MongoDB** connection strings; define **GIS connections** (collection, query field, geometry, mappings, optional workspace); **workspaces** with entity assignment and **access tokens**; **cookie** login for configuration.
+- **REST API (`TdpGis.Api`)**: FastEndpoints + Swagger; workspace-scoped GIS entity listing and phrase search; **workspace access token** required (`X-Access-Token` or Bearer); **no** Entra ID on this host; default exception handler for consistent API errors.
+- **Admin (`TdpGis.Endpoints`)**: **Microsoft Entra ID** (OIDC); **Gis Viewer** (Summary tab only) vs **Gis Admin** (full Mongo/GIS/workspace/token configuration); **`/Home/AccessDenied`** if the user has no GIS app role; **Summary** tab with read-only overview of connections, entities, workspaces, and token IDs; ASP.NET **Data Protection** keys in PostgreSQL so auth cookies survive container restarts.
 
 ## Repository layout
 
