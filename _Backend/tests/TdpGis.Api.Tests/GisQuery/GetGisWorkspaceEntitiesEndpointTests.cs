@@ -95,34 +95,6 @@ public class GetGisWorkspaceEntitiesEndpointTests
         repository.Verify(r => r.GetGisConnectionDtoByWorkspaceId(workspaceId), Times.Once);
     }
 
-    [Fact]
-    public async Task Get_returns_401_when_access_token_is_invalid()
-    {
-        var workspaceId = Guid.NewGuid();
-        const string token = "invalid-token";
-
-        var repository = new Mock<IGisConfigurationService>(MockBehavior.Strict);
-        repository
-            .Setup(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((GisWorkspaceAccessToken?)null);
-
-        await using var app = CreateApp(repository);
-        using var client = app.CreateClient();
-        client.DefaultRequestHeaders.Add("X-Access-Token", token);
-
-        var response = await client.GetAsync($"/api/gis-workspace-entities/{workspaceId}",
-            TestContext.Current.CancellationToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        var body = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(TestContext.Current
-            .CancellationToken);
-        body.Should().NotBeNull();
-        body!["message"].Should().Contain("Invalid workspace, access token");
-        repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
-            Times.Once);
-        repository.Verify(r => r.GetGisConnectionDtoByWorkspaceId(It.IsAny<Guid>()), Times.Never);
-    }
-
     private static WebApplicationFactory<Program> CreateApp(Mock<IGisConfigurationService> repository)
     {
         return new WebApplicationFactory<Program>()

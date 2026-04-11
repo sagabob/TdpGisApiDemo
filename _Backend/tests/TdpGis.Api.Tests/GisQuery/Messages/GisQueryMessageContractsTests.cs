@@ -12,10 +12,9 @@ public class GisQueryMessageContractsTests
     [Fact]
     public void GetGisWorkspaceEntitiesRequest_has_expected_access_token_header_attributes()
     {
-        var prop = typeof(GetGisWorkspaceEntitiesRequest).GetProperty(
-            nameof(GetGisWorkspaceEntitiesRequest.AccessToken));
-
+        var prop = typeof(GetGisWorkspaceEntitiesRequest).GetProperty(nameof(GetGisWorkspaceEntitiesRequest.AccessToken));
         prop.Should().NotBeNull();
+
         var fromHeader = prop!.GetCustomAttributes(typeof(FromHeaderAttribute), false)
             .Cast<FromHeaderAttribute>()
             .Single();
@@ -32,8 +31,8 @@ public class GisQueryMessageContractsTests
     public void SearchGisEntityRequest_has_expected_access_token_header_attributes()
     {
         var prop = typeof(SearchGisEntityRequest).GetProperty(nameof(SearchGisEntityRequest.AccessToken));
-
         prop.Should().NotBeNull();
+
         var fromHeader = prop!.GetCustomAttributes(typeof(FromHeaderAttribute), false)
             .Cast<FromHeaderAttribute>()
             .Single();
