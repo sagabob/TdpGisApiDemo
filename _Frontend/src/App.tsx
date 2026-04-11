@@ -3,6 +3,7 @@ import { GisMap } from '@/components/maps/GisMap';
 import { SearchContextProvider, type GeoDataResult, type GeoFeature } from '@/contexts/SearchContext';
 import { defaultPosition } from '@/config/gis-config';
 import SearchBar from '@/components/layouts/SearchBar';
+import { AuthLoginButton } from '@/components/layouts/AuthLoginButton';
 import { useWorkspaceEntities } from '@/hooks/useWorkspaceEntities';
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
     >
       <div className="flex h-full min-h-0 w-full flex-col">
         <SearchBar />
+        <AuthLoginButton />
         <div className="relative min-h-0 w-full flex-1">
           <div className="absolute inset-0 min-h-0">
             <GisMap />

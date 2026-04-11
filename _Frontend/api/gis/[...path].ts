@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyIncomingRequest } from '../verifyVercelRequest.js';
-import { ensureGetOrHead, proxyUpstream } from '../proxyUtils.js';
+import { verifyIncomingRequest } from '../utils/verifyVercelRequest.js';
+import { ensureGetOrHead, proxyUpstream } from '../utils/proxyUtils.js';
 
 /**
  * Proxies GET /api/gis/* to GIS_API_BASE_URL/* (Vercel env only).
