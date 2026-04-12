@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using FluentAssertions;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
+using TdpGis.Api.Tests.Support;
 using TdpGis.Application.Abstractions;
 using TdpGis.Domain;
 using Xunit;
@@ -16,7 +18,7 @@ namespace TdpGis.Api.Tests.GisQuery;
 public class SearchGisEntityEndpointTests
 {
     [Fact]
-    public async Task Get_returns_400_when_access_token_is_missing()
+    public async Task Get_returns_401_when_entra_bearer_is_missing()
     {
         var workspaceId = Guid.NewGuid();
         var entityId = Guid.NewGuid();
@@ -31,7 +33,7 @@ public class SearchGisEntityEndpointTests
             $"/api/gis-workspace/{workspaceId}/entity/{entityId}/search/garden",
             TestContext.Current.CancellationToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -63,6 +65,8 @@ public class SearchGisEntityEndpointTests
 
         await using var app = CreateApp(repository, dataService);
         using var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", IntegrationTestAuth.TestBearerToken);
         client.DefaultRequestHeaders.Add("X-Access-Token", token);
 
         var response = await client.GetAsync(
@@ -143,6 +147,8 @@ public class SearchGisEntityEndpointTests
 
         await using var app = CreateApp(repository, dataService);
         using var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", IntegrationTestAuth.TestBearerToken);
         client.DefaultRequestHeaders.Add("X-Access-Token", token);
 
         var response = await client.GetAsync(
@@ -169,14 +175,12 @@ public class SearchGisEntityEndpointTests
         Mock<IGisConfigurationService> repository,
         Mock<IGisDataService> dataService)
     {
-        return new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
-                builder.ConfigureServices(services =>
-                {
-                    services.RemoveAll<IGisConfigurationService>();
-                    services.RemoveAll<IGisDataService>();
-                    services.AddSingleton(repository.Object);
-                    services.AddSingleton(dataService.Object);
-                }));
+        return new TdpGisApiWebApplicationFactory(services =>
+        {
+            services.RemoveAll<IGisConfigurationService>();
+            services.RemoveAll<IGisDataService>();
+            services.AddSingleton(repository.Object);
+            services.AddSingleton(dataService.Object);
+        });
     }
 }

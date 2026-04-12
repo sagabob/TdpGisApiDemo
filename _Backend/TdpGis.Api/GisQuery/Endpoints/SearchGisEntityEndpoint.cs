@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using TdpGis.Api.GisQuery.Helpers;
 using TdpGis.Api.GisQuery.Messages;
 using TdpGis.Application.Abstractions;
@@ -11,12 +12,12 @@ public class SearchGisEntityEndpoint(IGisConfigurationService repository, IGisDa
     public override void Configure()
     {
         Get("/api/gis-workspace/{workspaceId}/entity/{entityId}/search/{searchedPhrase}");
-        AllowAnonymous();
+        AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
         Summary(s =>
         {
             s.Summary = "Returns GIS collection for a given entity satisfying searchable phrase.";
             s.Description =
-                $"Path: `workspaceId`. Provide `{GisWorkspaceAccess.AccessTokenHeader}` or `Authorization: Bearer` (access token value).";
+                $"Path: `workspaceId`, `entityId`, `searchedPhrase`. Send `Authorization: Bearer` (Entra) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
         });
     }
 

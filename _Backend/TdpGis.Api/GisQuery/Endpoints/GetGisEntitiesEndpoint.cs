@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using TdpGis.Api.GisQuery.Helpers;
 using TdpGis.Api.GisQuery.Messages;
 using TdpGis.Application.Abstractions;
@@ -14,12 +15,12 @@ public sealed class GetGisWorkspaceEntitiesEndpoint(IGisConfigurationService rep
     public override void Configure()
     {
         Get("/api/gis-workspace-entities/{workspaceId}");
-        AllowAnonymous();
+        AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
         Summary(s =>
         {
-            s.Summary = "Returns GIS entity definitions for the workspace when the access token is valid.";
+            s.Summary = "Returns GIS entity definitions for the workspace when tokens are valid.";
             s.Description =
-                $"Path: `workspaceId`. Provide `{GisWorkspaceAccess.AccessTokenHeader}` or `Authorization: Bearer` (access token value).";
+                $"Path: `workspaceId`. Send `Authorization: Bearer` (Microsoft Entra access token) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
         });
     }
 

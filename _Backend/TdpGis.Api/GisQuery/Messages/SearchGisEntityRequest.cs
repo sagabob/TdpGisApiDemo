@@ -1,15 +1,7 @@
-﻿using System.ComponentModel;
-using FastEndpoints;
-using TdpGis.Api.GisQuery.Helpers;
+﻿namespace TdpGis.Api.GisQuery.Messages;
 
-namespace TdpGis.Api.GisQuery.Messages;
-
-public record SearchGisEntityRequest(Guid WorkspaceId, Guid EntityId, string SearchedPhrase)
-{
-    /// <summary>
-    ///     Shown in Swagger; send the workspace access token here, or use <c>Authorization: Bearer</c> instead.
-    /// </summary>
-    [FromHeader(GisWorkspaceAccess.AccessTokenHeader)]
-    [DefaultValue("")]
-    public required string AccessToken { get; init; }
-}
+/// <summary>
+///     Route-only. Workspace token is validated via
+///     <see cref="TdpGis.Api.GisQuery.Helpers.GisWorkspaceAccess.TryValidateAsync" />.
+/// </summary>
+public record SearchGisEntityRequest(Guid WorkspaceId, Guid EntityId, string SearchedPhrase);
