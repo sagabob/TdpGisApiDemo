@@ -3,24 +3,33 @@
 //
 // Auth model (two layers):
 //   1) Microsoft Entra ID — JWT in "Authorization: Bearer". Validated here via
-//      AddMicrosoftIdentityWebApi + AzureAd in appsettings. Required for every
-//      API route (FallbackPolicy + FastEndpoints secure by default).
+//      AddMicrosoftIdentityWebApi + AzureAd in appsettings. Every API route requires
+//      the Entra app role in AzureAd:ApiAccessAppRole (default TdpGisApi.Access) on the
+//      token's "roles" claim, plus FallbackPolicy + FastEndpoints secure by default.
 //   2) Workspace access — opaque token in "X-Access-Token" only. Not validated
 //      in this file; GIS endpoints use GisWorkspaceAccess.TryValidateAsync
 //      against the database. Bearer is reserved for Entra, never for workspace.
 //
 // Config: AzureAd section (TenantId, ClientId, Audience, etc.) — see appsettings.
+// IntegrationTests:UseMockJwt — when true, Bearer is handled by IntegrationTestJwtAuthenticationHandler
+// (no Entra validation). Tests set this via IWebHostBuilder.UseSetting so minimal hosting picks it up.
 // =============================================================================
 
+using System.Security.Claims;
 using FastEndpoints;
 using FastEndpoints.Swagger;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Identity.Web;
 using NSwag;
+using TdpGis.Api.Authentication;
 using TdpGis.Api.GisQuery.Helpers;
 using TdpGis.Infrastructure.DependencyInjection;
+using TdpGis.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,30 +52,82 @@ builder.Services.AddCors(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// --- Authentication: Entra access tokens as Bearer JWT ---------------------------------
-// AddMicrosoftIdentityWebApi wires JWT bearer validation to the "AzureAd" config section.
-// Incoming "Authorization: Bearer <token>" is validated (issuer, audience, signature, lifetime).
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+// Liveness: process is up. Readiness: can reach PostgreSQL (same pattern as TdpGis.Endpoints).
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"])
+    .AddDbContextCheck<GisAppDbContext>("database", tags: ["ready"]);
 
-// Entra app roles arrive in the "roles" claim; align with ClaimsPrincipal role checks.
-builder.Services.PostConfigure<JwtBearerOptions>(
-    JwtBearerDefaults.AuthenticationScheme,
-    jwtOptions => { jwtOptions.TokenValidationParameters.RoleClaimType = "roles"; });
+// --- Authentication: Entra access tokens as Bearer JWT (or mock JWT for integration tests) ------------
+var useMockJwtForIntegrationTests = builder.Configuration.GetValue("IntegrationTests:UseMockJwt", false);
+if (useMockJwtForIntegrationTests)
+{
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddScheme<AuthenticationSchemeOptions, IntegrationTestJwtAuthenticationHandler>(
+            JwtBearerDefaults.AuthenticationScheme, _ => { });
+}
+else
+{
+    // AddMicrosoftIdentityWebApi wires JWT bearer validation to the "AzureAd" config section.
+    // Incoming "Authorization: Bearer <token>" is validated (issuer, audience, signature, lifetime).
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
-// Keep claim types as Entra issues them (e.g. "roles") instead of mapped URIs.
-builder.Services.Configure<MicrosoftIdentityOptions>(options => { options.MapInboundClaims = false; });
+    // After Microsoft.Identity.Web: roles claim + accept common Entra audience string forms (api://… vs raw app id).
+    // If you still see "audience '(null)' is invalid", the JWT likely has no `aud` claim — use an access token for
+    // this API (correct scope), not an ID token or Graph token; decode at jwt.ms and confirm `aud` exists.
+    var apiAudience = builder.Configuration["AzureAd:Audience"];
+    var apiClientId = builder.Configuration["AzureAd:ClientId"];
+    var acceptedAudiences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    if (!string.IsNullOrWhiteSpace(apiAudience)) acceptedAudiences.Add(apiAudience.Trim());
+    if (!string.IsNullOrWhiteSpace(apiClientId))
+    {
+        acceptedAudiences.Add(apiClientId.Trim());
+        acceptedAudiences.Add($"api://{apiClientId.Trim()}");
+    }
 
-// --- Authorization: require a signed-in user on all endpoints by default --------------
-// FallbackPolicy applies when an endpoint does not call AllowAnonymous().
-// Together with FastEndpoints' secure-by-default behavior, every route needs a valid Entra JWT.
+    builder.Services.PostConfigure<JwtBearerOptions>(
+        JwtBearerDefaults.AuthenticationScheme,
+        jwtOptions =>
+        {
+            jwtOptions.TokenValidationParameters.RoleClaimType = "roles";
+            if (acceptedAudiences.Count > 0)
+                jwtOptions.TokenValidationParameters.ValidAudiences = acceptedAudiences.ToArray();
+        });
+
+    // Keep claim types as Entra issues them (e.g. "roles") instead of mapped URIs.
+    builder.Services.Configure<MicrosoftIdentityOptions>(options => { options.MapInboundClaims = false; });
+}
+
+// --- Authorization: Entra JWT + app role (Expose an API → App roles → assign users/groups) ---
+// Token must include app role value AzureAd:ApiAccessAppRole (default TdpGisApi.Access) on a "roles" claim.
+// IntegrationTests:SkipApiAccessRole=true (injected only by TdpGis.Api.Tests) skips the role assertion.
+var apiAccessAppRole = builder.Configuration["AzureAd:ApiAccessAppRole"] ?? "TdpGisApi.Access";
+var skipApiAccessRoleCheck = builder.Configuration.GetValue("IntegrationTests:SkipApiAccessRole", false);
 builder.Services.AddAuthorization(options =>
 {
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+    var policy = new AuthorizationPolicyBuilder()
         .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-        .RequireAuthenticatedUser()
-        .Build();
+        .RequireAuthenticatedUser();
+    if (!skipApiAccessRoleCheck)
+        policy.RequireAssertion(ctx => HasApiAccessRole(ctx.User, apiAccessAppRole));
+    options.FallbackPolicy = policy.Build();
 });
+
+static bool HasApiAccessRole(ClaimsPrincipal user, string requiredRole)
+{
+    if (string.IsNullOrEmpty(requiredRole) || user.Identity?.IsAuthenticated != true)
+        return false;
+
+    foreach (var claim in user.Claims)
+    {
+        if (claim.Type is not ("roles" or "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"))
+            continue;
+        if (string.Equals(claim.Value, requiredRole, StringComparison.Ordinal))
+            return true;
+    }
+
+    return false;
+}
 
 // Swagger: document both schemes — Entra (Bearer) for API auth, X-Access-Token for workspace GIS calls.
 // EnableJWTBearerAuth = false avoids duplicate generic JWT entries; we register "Entra" explicitly below.
@@ -83,7 +144,8 @@ builder.Services.AddFastEndpoints()
                 Type = OpenApiSecuritySchemeType.Http,
                 Scheme = "bearer",
                 BearerFormat = "JWT",
-                Description = "Microsoft Entra ID access token for this API (Authorization: Bearer)."
+                Description =
+                    "Microsoft Entra ID access token (Authorization: Bearer). Caller must have app role TdpGisApi.Access (or AzureAd:ApiAccessAppRole) in the `roles` claim."
             });
             s.AddAuth("WorkspaceAccess", new OpenApiSecurityScheme
             {
@@ -108,10 +170,21 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Anonymous so probes work without Entra JWT (orchestrators, load balancers, Docker healthcheck).
+app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        Predicate = r => r.Tags?.Contains("live") == true
+    })
+    .AllowAnonymous();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = r => r.Tags?.Contains("ready") == true
+    })
+    .AllowAnonymous();
+
 app.UseDefaultExceptionHandler()
     .UseFastEndpoints()
     .UseSwaggerGen();
 
 app.Run();
 
-public partial class Program;

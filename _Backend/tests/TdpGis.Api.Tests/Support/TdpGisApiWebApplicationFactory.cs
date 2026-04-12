@@ -6,19 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace TdpGis.Api.Tests.Support;
 
 /// <summary>
-///     Runs <see cref="IntegrationTestAuth.BypassJwtValidation" /> in <see cref="ConfigureTestServices" />
-///     so JWT options are adjusted after Microsoft.Identity.Web registers the API.
+///     Injects test AzureAd config (<see cref="IntegrationTestAuth.AddTestAzureAd" />) so the API runs with
+///     mock JWT auth and skips the Entra app role requirement.
 /// </summary>
 internal sealed class TdpGisApiWebApplicationFactory(Action<IServiceCollection> configureTestServices)
     : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Host settings must be visible when Program builds WebApplicationBuilder.Configuration (minimal hosting).
+        builder.UseSetting("IntegrationTests:UseMockJwt", "true");
+        builder.UseSetting("IntegrationTests:SkipApiAccessRole", "true");
         builder.ConfigureAppConfiguration((_, cfg) => IntegrationTestAuth.AddTestAzureAd(cfg));
-        builder.ConfigureTestServices(services =>
-        {
-            IntegrationTestAuth.BypassJwtValidation(services);
-            configureTestServices(services);
-        });
+        builder.ConfigureTestServices(configureTestServices);
     }
 }
