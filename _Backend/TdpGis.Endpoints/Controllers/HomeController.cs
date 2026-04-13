@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TdpGis.AdminApplication.AppModels;
 using TdpGis.AdminApplication.Services;
 using TdpGis.Endpoints.Models;
+using TdpGis.Endpoints.Security;
 
 namespace TdpGis.Endpoints.Controllers;
 
