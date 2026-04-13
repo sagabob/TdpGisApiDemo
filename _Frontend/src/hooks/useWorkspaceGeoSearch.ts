@@ -1,5 +1,6 @@
 import { useContext, useEffect } from 'react';
 import axios from 'axios';
+import { gisApiClient } from '@/api/gisClient';
 import SearchContext from '@/contexts/SearchContext';
 import { workspaceEntitySearchUrl } from '@/config/gis-config';
 import {
@@ -10,7 +11,7 @@ import type { GeoFeature } from '@/contexts/SearchContext';
 
 /**
  * When search text is long enough and entities are selected, loads place search results
- * from `/api/workspace-entity-search` (one request per entity) and writes merged `results`
+ * from `/api/gis/workspace-entity-search` (one request per entity) and writes merged `results`
  * into SearchContext via `getGeoData`.
  */
 export function useWorkspaceGeoSearch() {
@@ -40,11 +41,12 @@ export function useWorkspaceGeoSearch() {
             const entity = workspaceEntities.find((e) => e.id === entityId);
             if (!entity) return [] as GeoFeature[];
 
-            const res = await axios.get<WorkspaceSearchApiResponse>(workspaceEntitySearchUrl, {
+            const res = await gisApiClient.get<WorkspaceSearchApiResponse>(workspaceEntitySearchUrl, {
               signal: controller.signal,
               params: {
                 entityId,
                 q: phrase,
+                ...(entity.workspaceId ? { workspaceId: entity.workspaceId } : {}),
               },
             });
 

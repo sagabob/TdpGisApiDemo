@@ -2,7 +2,7 @@
 
 The **end goal** of this repository is the **GIS map frontend** in **`_Frontend/`**: a browser app that queries **`TdpGis.Api`** and displays workspace GIS features on a Mapbox map.
 
-The **backend** in **`_Backend/`** powers that API and an **MVC admin** (`TdpGis.Endpoints`) where you configure MongoDB connections, GIS entities, workspaces, and access tokens. Admins sign in with **Microsoft Entra ID** (OpenID Connect); **app roles** control who can view or edit configuration. The **GIS REST API** (`TdpGis.Api`) is **not** secured with Entra—it accepts **workspace access tokens** (`X-Access-Token` / Bearer). Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from **MongoDB** using saved configuration.
+The **backend** in **`_Backend/`** powers that API and an **MVC admin** (`TdpGis.Endpoints`) where you configure MongoDB connections, GIS entities, workspaces, and access tokens. Admins sign in with **Microsoft Entra ID** (OpenID Connect); **app roles** control who can view or edit configuration. The **GIS REST API** (`TdpGis.Api`) requires both **Entra JWT Bearer** and **workspace access token** (`X-Access-Token`). Relational metadata is stored in **PostgreSQL** (Entity Framework Core); GIS payloads are read from **MongoDB** using saved configuration.
 
 ## Live demos
 
@@ -14,7 +14,7 @@ The **backend** in **`_Backend/`** powers that API and an **MVC admin** (`TdpGis
 
 ## GIS map frontend (`_Frontend/`)
 
-This is the browser client that consumes **`TdpGis.Api`** and shows search results on the map. It uses **Vite + React** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **Axios**). The browser only calls same-origin **`/api/*`** routes; **Vercel serverless handlers** under `_Frontend/api/` (and the Vite dev proxy locally) forward to the real API and attach **`X-Access-Token`** from server environment so tokens are not embedded in the client bundle.
+This is the browser client that consumes **`TdpGis.Api`** and shows search results on the map. It uses **Vite + React** (TypeScript, **Tailwind CSS**, **Mapbox** / `react-map-gl`, **Axios**). The browser only calls same-origin **`/api/*`** routes; **Vercel serverless handlers** under `_Frontend/api/` (and the Vite dev proxy locally) forward to the real API and attach **`X-Access-Token`** and **`Authorization: Bearer`** server-side so tokens are not embedded in the client bundle.
 
 **Try the demo**
 
@@ -22,8 +22,8 @@ Go to the frontend demo link, type a phrase such as 'park' or 'garden' to see th
 
 **Runtime flow**
 
-- `useWorkspaceEntities` loads workspace entities from `/api/workspace-entities`.
-- `useWorkspaceGeoSearch` searches selected entities via `/api/workspace-entity-search?entityId=...&q=...`.
+- `useWorkspaceEntities` loads workspace entities from `/api/gis/workspace-entities`.
+- `useWorkspaceGeoSearch` searches selected entities via `/api/gis/workspace-entity-search?entityId=...&q=...&workspaceId=...`.
 - Responses are normalized and rendered as map markers and a selection overlay in `GisMap`.
 
 **Run locally**
@@ -143,7 +143,14 @@ With the app running, open the **Swagger UI** (FastEndpoints + Swagger) at **`/s
 
 ### REST API (GIS query)
 
-GIS endpoints require a **valid workspace access token**: header **`X-Access-Token`**, or **`Authorization: Bearer`** with the token value. Tokens are issued from the admin UI and stored in PostgreSQL with the workspace.
+GIS endpoints require both:
+- **Entra access token** in `Authorization: Bearer` (JWT policy + app role check), and
+- **Workspace access token** in `X-Access-Token` (validated against workspace/token records).
+
+In the frontend BFF, bearer is resolved from:
+1. `gis_api_access_token` HTTP-only cookie (client credentials bootstrap),
+2. `auth_access_token` HTTP-only cookie (signed-in user),
+3. `REST_API_BEARER_TOKEN` / `PUBLIC_API_BEARER_TOKEN` env fallback.
 
 | Method | Route | Purpose |
 |--------|--------|---------|
@@ -180,7 +187,7 @@ The admin app is **ASP.NET Core MVC**: Razor views under **`_Backend/TdpGis.Endp
 ## Features (summary)
 
 - **Frontend**: workspace entity filters, debounced search against **`TdpGis.Api`**, Mapbox markers and detail overlay (BFF keeps access tokens server-side).
-- **REST API (`TdpGis.Api`)**: FastEndpoints + Swagger; workspace-scoped GIS entity listing and phrase search; **workspace access token** required (`X-Access-Token` or Bearer); **no** Entra ID on this host; default exception handler for consistent API errors.
+- **REST API (`TdpGis.Api`)**: FastEndpoints + Swagger; workspace-scoped GIS entity listing and phrase search; requires Entra JWT Bearer + `X-Access-Token`; default exception handler for consistent API errors.
 - **Admin (`TdpGis.Endpoints`)**: **Microsoft Entra ID** (OIDC); **Gis Viewer** (Summary tab only) vs **Gis Admin** (full Mongo/GIS/workspace/token configuration); **`/Home/AccessDenied`** if the user has no GIS app role; **Summary** tab with read-only overview of connections, entities, workspaces, and token IDs; ASP.NET **Data Protection** keys in PostgreSQL so auth cookies survive container restarts.
 
 ## Repository layout

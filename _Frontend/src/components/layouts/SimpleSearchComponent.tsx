@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, type CSSProperties } from 'react';
 import { debounce } from "lodash"
 
-export interface SimpleSearchComponentProps {
+interface SimpleSearchComponentProps {
     searchValue: string;
     setSearchValue: (value: string) => void;
     debounceTimeout: number;

@@ -3,10 +3,11 @@ import { verifyIncomingRequest } from '../utils/verifyVercelRequest.js';
 import { ensureGetOrHead, proxyUpstream } from '../utils/proxyUtils.js';
 
 /**
- * Proxies GET /api/gis/* to GIS_API_BASE_URL/* (Vercel env only).
- * Optional GIS_API_ACCESS_TOKEN adds X-Access-Token upstream (do not pass secrets from the browser).
+ * Optional legacy proxy: GET /api/gis/* → `{GIS_API_BASE_URL}/*` (Vercel env only).
+ * The SPA uses REST workspace routes (`/api/gis/workspace-entities`, `/api/gis/workspace-entity-search`) instead;
+ * keep this only if something still calls `/api/gis/...` upstream.
+ * Optional GIS_API_ACCESS_TOKEN adds X-Access-Token upstream.
  * Optional incoming checks: ALLOWED_ORIGINS, INTERNAL_API_KEY — see `api/verifyVercelRequest.ts`.
- * Example: /api/gis/GisQuery/querybytext/QueryPlaceName/foo/5 → {GIS_API_BASE_URL}/GisQuery/querybytext/QueryPlaceName/foo/5
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!ensureGetOrHead(req, res)) return;

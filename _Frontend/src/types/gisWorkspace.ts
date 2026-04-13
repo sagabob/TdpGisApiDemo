@@ -16,4 +16,6 @@ export interface GisConnectionDto {
     propertyMappings: PropertyMappingDto[];
     entityLabel: string;
     description?: string;
+    /** Set when entities come from merged public + private workspace lists (see `/api/gis/workspace-entities`). */
+    workspaceId?: string;
 }

@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import { ensureGisApiCookie } from '@/api/ensureGisApiCookie';
 import { fetchWorkspaceEntities } from '@/api/fetchWorkspaceEntities';
 import type { GisConnectionDto } from '@/types/gisWorkspace';
 import {
+  clearWorkspaceEntitiesAuthCache,
   readWorkspaceEntitiesFromSession,
   writeWorkspaceEntitiesToSession,
+  type WorkspaceEntitiesAuthScope,
 } from '@/lib/workspaceEntitiesSession';
+import { useAuthSession, type AuthSessionState } from '@/hooks/useAuthSession';
 
 function getErrorMessage(err: unknown): string {
   let msg = 'Failed to load workspace entities.';
@@ -22,21 +26,39 @@ function getErrorMessage(err: unknown): string {
   return msg;
 }
 
+const authRedirectOnFirstVisit = import.meta.env.VITE_AUTH_REDIRECT_ON_LOAD === 'true';
+
 export function useWorkspaceEntities() {
-  // Seed from session storage to avoid a loading flash and extra roundtrip on refresh.
-  const [workspaceEntities, setWorkspaceEntities] = useState<GisConnectionDto[] | null>(() =>
-    readWorkspaceEntitiesFromSession(),
-  );
-  const [workspaceEntitiesLoading, setWorkspaceEntitiesLoading] = useState(
-    () => readWorkspaceEntitiesFromSession() === null,
-  );
-  const [workspaceEntitiesError, setWorkspaceEntitiesError] = useState<string | null>(null);
-  const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
-  // Prevents re-selecting all entities on every render/update after user changes selection.
-  const hasSeededSelection = useRef(false);
+  const session = useAuthSession();
 
   useEffect(() => {
-    const cached = readWorkspaceEntitiesFromSession();
+    if (!authRedirectOnFirstVisit || session !== 'signedOut') return;
+    window.location.assign('/api/auth/login');
+  }, [session]);
+
+  const [workspaceEntities, setWorkspaceEntities] = useState<GisConnectionDto[] | null>(null);
+  const [workspaceEntitiesLoading, setWorkspaceEntitiesLoading] = useState(true);
+  const [workspaceEntitiesError, setWorkspaceEntitiesError] = useState<string | null>(null);
+  const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
+  const hasSeededSelection = useRef(false);
+  const prevSessionRef = useRef<AuthSessionState | null>(null);
+
+  useEffect(() => {
+    hasSeededSelection.current = false;
+  }, [session]);
+
+  useEffect(() => {
+    if (session === 'loading') {
+      return;
+    }
+
+    if (session === 'signedIn' && prevSessionRef.current === 'signedOut') {
+      clearWorkspaceEntitiesAuthCache();
+    }
+    prevSessionRef.current = session;
+
+    const scope: WorkspaceEntitiesAuthScope = session === 'signedIn' ? 'auth' : 'anon';
+    const cached = readWorkspaceEntitiesFromSession(scope);
     if (cached !== null) {
       setWorkspaceEntities(cached);
       setWorkspaceEntitiesError(null);
@@ -44,13 +66,19 @@ export function useWorkspaceEntities() {
       return;
     }
 
+    setWorkspaceEntitiesLoading(true);
     const controller = new AbortController();
-    fetchWorkspaceEntities({ signal: controller.signal })
+
+    const run = async () => {
+      await ensureGisApiCookie();
+      return fetchWorkspaceEntities({ signal: controller.signal });
+    };
+
+    run()
       .then((list) => {
         setWorkspaceEntitiesError(null);
         setWorkspaceEntities(list);
-        // Keep a short-lived cache for faster subsequent visits in the same tab/session.
-        writeWorkspaceEntitiesToSession(list);
+        writeWorkspaceEntitiesToSession(list, scope);
       })
       .catch((err: unknown) => {
         setWorkspaceEntitiesError(getErrorMessage(err));
@@ -60,7 +88,7 @@ export function useWorkspaceEntities() {
         setWorkspaceEntitiesLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     if (
@@ -68,12 +96,10 @@ export function useWorkspaceEntities() {
       workspaceEntities.length > 0 &&
       !hasSeededSelection.current
     ) {
-      // First successful load selects all entities by default so search "just works".
       setSelectedEntityIds(workspaceEntities.map((e) => e.id));
       hasSeededSelection.current = true;
     }
     if (!workspaceEntities?.length) {
-      // Reset selection state when list is unavailable (error/empty response).
       hasSeededSelection.current = false;
       setSelectedEntityIds([]);
     }

@@ -26,6 +26,9 @@ export const AUTH_ACCESS_TOKEN_COOKIE = 'auth_access_token';
 export const AUTH_REFRESH_TOKEN_COOKIE = 'auth_refresh_token';
 export const OAUTH_STATE_COOKIE = 'oauth_state';
 
+/** HTTP-only cookie set by `api/security/enable-gis-api.ts` — client-credentials token for TdpGis.Api (anonymous). */
+export const GIS_API_ACCESS_TOKEN_COOKIE = 'gis_api_access_token';
+
 export function authCookieSecure(redirectUri: string): boolean {
   return redirectUri.startsWith('https://');
 }
@@ -151,6 +154,23 @@ export function parseCookies(req: VercelRequest): Record<string, string> {
     }
   }
   return out;
+}
+
+/** True when the browser sent the HTTP-only OAuth access-token cookie (see `api/auth/callback.ts`). */
+export function isRequestAuthenticated(req: VercelRequest): boolean {
+  return Boolean(parseCookies(req)[AUTH_ACCESS_TOKEN_COOKIE]?.length);
+}
+
+/** Entra access token from the BFF session cookie — forward as `Authorization: Bearer` to TdpGis.Api. */
+export function getEntraAccessTokenFromRequest(req: VercelRequest): string | undefined {
+  const t = parseCookies(req)[AUTH_ACCESS_TOKEN_COOKIE]?.trim();
+  return t || undefined;
+}
+
+/** Client-credentials token from `enable-gis-api` bootstrap (HTTP-only). */
+export function getGisApiAccessTokenFromRequest(req: VercelRequest): string | undefined {
+  const t = parseCookies(req)[GIS_API_ACCESS_TOKEN_COOKIE]?.trim();
+  return t || undefined;
 }
 
 /**

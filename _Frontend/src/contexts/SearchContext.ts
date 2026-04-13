@@ -3,7 +3,7 @@ import type { ViewState } from "react-map-gl/mapbox";
 import type { GisConnectionDto } from "@/types/gisWorkspace";
 
 /** Map camera state (aligned with `react-map-gl` so pan/zoom/rotate updates stay consistent). */
-export type Position = ViewState;
+type Position = ViewState;
 
 export type GeoFeature = {
     Id: string | number;
@@ -16,15 +16,15 @@ export type GeoFeature = {
     /** Workspace GIS entity (connection) this hit belongs to — set for workspace search results. */
     sourceEntityId?: string;
     sourceEntityLabel?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export type GeoDataResult = {
     results?: GeoFeature[];
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
-export interface SearchContextType {
+interface SearchContextType {
     initialPosition: Position;
     setPosition: Dispatch<SetStateAction<Position>>;
     searchValue: string;

@@ -3,6 +3,7 @@ import {
   AUTH_ACCESS_TOKEN_COOKIE,
   AUTH_REFRESH_TOKEN_COOKIE,
   OAUTH_STATE_COOKIE,
+  GIS_API_ACCESS_TOKEN_COOKIE,
   allowGet,
   authCookieOpts,
   authCookieSecureFromRequest,
@@ -26,6 +27,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   res.appendHeader('Set-Cookie', clear(AUTH_ACCESS_TOKEN_COOKIE));
   res.appendHeader('Set-Cookie', clear(AUTH_REFRESH_TOKEN_COOKIE));
   res.appendHeader('Set-Cookie', clear(OAUTH_STATE_COOKIE));
+  res.appendHeader('Set-Cookie', clear(GIS_API_ACCESS_TOKEN_COOKIE));
   res.setHeader('Location', location);
   res.end();
 }

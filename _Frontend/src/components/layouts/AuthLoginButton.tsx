@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useAuthSession } from '@/hooks/useAuthSession';
 
 /** inset from right: leave room for Mapbox NavigationControl (zoom) top-right */
 const btnClassName =
@@ -28,27 +28,7 @@ function MicrosoftIcon({ className }: { className?: string }) {
  * Use `vercel dev` or deployed app so `/api/auth/*` exists.
  */
 export function AuthLoginButton() {
-  const [session, setSession] = useState<'loading' | 'signedIn' | 'signedOut'>('loading');
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session', {
-          credentials: 'same-origin',
-          headers: { Accept: 'application/json' },
-        });
-        if (!res.ok) throw new Error('session');
-        const data = (await res.json()) as { authenticated?: boolean };
-        if (!cancelled) setSession(data.authenticated ? 'signedIn' : 'signedOut');
-      } catch {
-        if (!cancelled) setSession('signedOut');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const session = useAuthSession();
 
   if (session === 'loading') {
     return (
