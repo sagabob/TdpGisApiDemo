@@ -5,7 +5,8 @@
 //   1) Microsoft Entra ID — JWT in "Authorization: Bearer". Validated here via
 //      AddMicrosoftIdentityWebApi + AzureAd in appsettings. Every API route requires
 //      the Entra app role in AzureAd:ApiAccessAppRole (default TdpGisApi.Access) on the
-//      token's "roles" claim, plus FallbackPolicy + FastEndpoints secure by default.
+//      token's "roles" claim, plus a named auth policy applied to FastEndpoints only (not FallbackPolicy,
+//      which would block NSwag /swagger and OpenAPI JSON).
 //   2) Workspace access — opaque token in "X-Access-Token" only. Not validated
 //      in this file; GIS endpoints use GisWorkspaceAccess.TryValidateAsync
 //      against the database. Bearer is reserved for Entra, never for workspace.
@@ -15,12 +16,10 @@
 // (no Entra validation). Tests set this via IWebHostBuilder.UseSetting so minimal hosting picks it up.
 // =============================================================================
 
-using System.Security.Claims;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -103,31 +102,21 @@ else
 // IntegrationTests:SkipApiAccessRole=true (injected only by TdpGis.Api.Tests) skips the role assertion.
 var apiAccessAppRole = builder.Configuration["AzureAd:ApiAccessAppRole"] ?? "TdpGisApi.Access";
 var skipApiAccessRoleCheck = builder.Configuration.GetValue("IntegrationTests:SkipApiAccessRole", false);
+const string tdpGisApiAccessPolicy = "TdpGisApiAccess";
 builder.Services.AddAuthorization(options =>
 {
-    var policy = new AuthorizationPolicyBuilder()
-        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-        .RequireAuthenticatedUser();
-    if (!skipApiAccessRoleCheck)
-        policy.RequireAssertion(ctx => HasApiAccessRole(ctx.User, apiAccessAppRole));
-    options.FallbackPolicy = policy.Build();
+    // Named policy only — do not use FallbackPolicy: NSwag Swagger UI and /swagger/v1/swagger.json are not
+    // FastEndpoints and cannot opt out of a fallback policy, so Swagger would always return 401.
+    options.AddPolicy(
+        tdpGisApiAccessPolicy,
+        policy =>
+        {
+            policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
+            policy.RequireAuthenticatedUser();
+            if (!skipApiAccessRoleCheck)
+                policy.RequireAssertion(ctx => EntraAppRoleClaims.HasRole(ctx.User, apiAccessAppRole));
+        });
 });
-
-static bool HasApiAccessRole(ClaimsPrincipal user, string requiredRole)
-{
-    if (string.IsNullOrEmpty(requiredRole) || user.Identity?.IsAuthenticated != true)
-        return false;
-
-    foreach (var claim in user.Claims)
-    {
-        if (claim.Type is not ("roles" or "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"))
-            continue;
-        if (string.Equals(claim.Value, requiredRole, StringComparison.Ordinal))
-            return true;
-    }
-
-    return false;
-}
 
 // Swagger: document both schemes — Entra (Bearer) for API auth, X-Access-Token for workspace GIS calls.
 // EnableJWTBearerAuth = false avoids duplicate generic JWT entries; we register "Entra" explicitly below.
@@ -166,7 +155,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
-// Order matters: authenticate JWT first, then run authorization (FallbackPolicy), then endpoints.
+// Order matters: authenticate JWT first, then run authorization, then endpoints.
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -183,8 +172,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     .AllowAnonymous();
 
 app.UseDefaultExceptionHandler()
-    .UseFastEndpoints()
+    .UseFastEndpoints(c => c.Endpoints.Configurator = ep => ep.Policies(tdpGisApiAccessPolicy))
     .UseSwaggerGen();
 
 app.Run();
-

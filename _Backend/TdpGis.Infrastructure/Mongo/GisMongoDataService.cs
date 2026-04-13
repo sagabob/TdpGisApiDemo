@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Nodes;
-using MongoDB.Bson;
 using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Application.Abstractions;
 using TdpGis.Domain;
@@ -7,7 +6,9 @@ using TdpGis.Infrastructure.Helpers;
 
 namespace TdpGis.Infrastructure.Mongo;
 
-public class GisMongoDataService(IMongoMetadataProvider mongoMetadataProvider, IGisMongoQueryRepository mongoQueryRepository)
+public class GisMongoDataService(
+    IMongoMetadataProvider mongoMetadataProvider,
+    IGisMongoQueryRepository mongoQueryRepository)
     : IGisDataService
 {
     public async Task<List<JsonObject>> GetSearchedInstances(GisConnection gisConnection, string searchText,

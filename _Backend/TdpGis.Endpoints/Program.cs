@@ -30,10 +30,8 @@ builder.Services
     .AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
 
-builder.Services.Configure<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme, options =>
-{
-    options.AccessDeniedPath = "/Home/AccessDenied";
-});
+builder.Services.Configure<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme,
+    options => { options.AccessDeniedPath = "/Home/AccessDenied"; });
 
 // Ensure 403 from [Authorize] uses the cookie handler so AccessDeniedPath is honored (not OIDC forbid).
 builder.Services.Configure<AuthenticationOptions>(options =>

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace TdpGis.Endpoints.Security;
+namespace TdpGis.Api.Authentication;
 
 /// <summary>
 ///     Entra ID emits app roles in the <c>roles</c> claim; inbound claim mapping may also use

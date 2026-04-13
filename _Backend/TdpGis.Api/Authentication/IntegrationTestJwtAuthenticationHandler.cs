@@ -11,7 +11,7 @@ namespace TdpGis.Api.Authentication;
 ///     <c>Authorization: Bearer</c> as a JWT without signature or lifetime checks; claims come from the payload.
 ///     Do not set <c>UseMockJwt</c> in production.
 /// </summary>
-internal sealed class IntegrationTestJwtAuthenticationHandler(
+public sealed class IntegrationTestJwtAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder)

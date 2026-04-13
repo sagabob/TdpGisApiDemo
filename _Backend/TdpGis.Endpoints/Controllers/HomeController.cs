@@ -1,11 +1,9 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using TdpGis.AdminApplication.AppModels;
 using TdpGis.AdminApplication.Services;
 using TdpGis.Endpoints.Models;
-using TdpGis.Endpoints.Security;
 
 namespace TdpGis.Endpoints.Controllers;
 
@@ -13,6 +11,7 @@ namespace TdpGis.Endpoints.Controllers;
 public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configuration) : Controller
 {
     private string AdminAppRole => configuration["AzureAd:AdminAppRole"] ?? "Gis.Admin";
+
     [AllowAnonymous]
     public IActionResult Index()
     {
