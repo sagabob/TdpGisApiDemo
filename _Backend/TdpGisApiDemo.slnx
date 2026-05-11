@@ -10,4 +10,5 @@
   <Project Path="TdpGis.Domain/TdpGis.Domain.csproj" />
   <Project Path="TdpGis.Endpoints/TdpGis.Endpoints.csproj" />
   <Project Path="TdpGis.Infrastructure/TdpGis.Infrastructure.csproj" />
+  <Project Path="TdpGis.LocalApi/TdpGis.LocalApi.csproj" Id="25085abb-2a9a-486a-9b14-492ab149e731" />
 </Solution>
