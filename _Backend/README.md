@@ -11,12 +11,12 @@ The TDP GIS API backend provides a robust REST API for managing geospatial data 
 The backend follows a layered architecture:
 
 - **TdpGis.Api** - HTTP API layer with FastEndpoints, OpenAPI/Swagger documentation, and authentication
-- **TdpGis.Endpoints** - MVC controllers and views (if needed)
+- **TdpGis.Endpoints** - Admin UI with MVC controllers and views for administrative functionality
 - **TdpGis.LocalApi** - Local development API with database services
 - **TdpGis.Application** - Business logic and application services
 - **TdpGis.Infrastructure** - Data persistence, configurations, and external integrations
 - **TdpGis.Domain** - Core domain models and entities
-- **TdpGis.AdminApplication** - Administrative functionality and configuration management
+- **TdpGis.AdminApplication** - Administrative services and configuration models for the admin UI
 
 ## Technology Stack
 
@@ -85,13 +85,23 @@ Apply Entity Framework Core migrations:
 dotnet ef database update -p TdpGis.Infrastructure -s TdpGis.Api
 ```
 
-### 5. Run the API
+### 5. Run the Applications
+
+#### REST API
 
 ```bash
 dotnet run --project TdpGis.Api
 ```
 
 The API will start at `https://localhost:7000` (or the configured port).
+
+#### Admin UI
+
+```bash
+dotnet run --project TdpGis.Endpoints
+```
+
+The Admin UI will be available at the configured port (typically `https://localhost:7001` or `http://localhost:5000`).
 
 ## API Documentation
 
