@@ -12,6 +12,7 @@ env:
   # Full image names, e.g. dockerhub-user/tdpgis-endpoints and dockerhub-user/tdpgis-api
   IMAGE_ENDPOINTS: ${{ vars.DOCKERHUB_IMAGE_ENDPOINTS }}
   IMAGE_API: ${{ vars.DOCKERHUB_IMAGE_API }}
+  IMAGE_LOCAL_API: ${{ vars.DOCKERHUB_IMAGE_LOCAL_API }}
 
 jobs:
   dockerhub:
@@ -89,3 +90,21 @@ jobs:
           push: true
           tags: ${{ steps.meta_api.outputs.tags }}
           labels: ${{ steps.meta_api.outputs.labels }}
+
+      - name: Extract Docker metadata (TdpGis.LocalApi)
+        id: meta_local_api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_LOCAL_API }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.dt.outputs.value }}
+
+      - name: Build and push TdpGis.LocalApi
+        uses: docker/build-push-action@v6
+        with:
+          context: ./_Backend
+          file: ./_Backend/TdpGis.LocalApi/Dockerfile
+          push: true
+          tags: ${{ steps.meta_local_api.outputs.tags }}
+          labels: ${{ steps.meta_local_api.outputs.labels }}
