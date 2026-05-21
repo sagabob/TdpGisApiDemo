@@ -10,6 +10,12 @@ public interface IGisMongoQueryRepository
         string collectionName,
         string queryField,
         string searchText,
+        string[] includeFields,
         int maxResults,
+        CancellationToken cancellationToken = default);
+
+    Task<PagedResult<Address>> SearchPagedAsync(string connectionString, string databaseName,
+        string collectionName,
+        string queryField, string searchText, string[] includeFields, int skip, int maxResults,
         CancellationToken cancellationToken = default);
 }
