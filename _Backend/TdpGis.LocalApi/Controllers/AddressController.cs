@@ -20,7 +20,7 @@ public class AddressController(IOptions<SearchFeature> option, IGisMongoQueryRep
         return Ok(results);
     }
 
-    [HttpGet("paged/{searchTerm:alpha:minlength(3)}/{pageIndex:int}/{pageSize:int=50}")]
+    [HttpGet("paged/{searchTerm:alpha:minlength(3)}/{pageIndex:int:min(1)}/{pageSize:int:range(10, 100)=20}")]
     public async Task<IActionResult> Get(string searchTerm, int pageIndex, int pageSize)
     {
         var searchObject = option.Value;
