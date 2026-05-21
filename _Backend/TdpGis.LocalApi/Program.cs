@@ -11,9 +11,12 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.RegisterComponents(builder.Configuration);
 
+builder.Services.AddProblemDetails();
+
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 // Configure the HTTP request pipeline.
 app.MapOpenApi();
 app.UseSwagger();
