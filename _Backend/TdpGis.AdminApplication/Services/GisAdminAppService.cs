@@ -6,14 +6,15 @@ namespace TdpGis.AdminApplication.Services;
 
 public sealed class GisAdminAppService(
     IGisConfigurationRepository repository,
-    IMongoMetadataProvider mongo) : IGisAdminAppService
+    IMongoMetadataProvider mongo,
+    ISqlMetadataProvider sql) : IGisAdminAppService
 {
     public GisConfigurationPageData GetConfigurationPageData()
     {
         return new GisConfigurationPageData
         {
             ExistingConnections = repository.GetAllConnections(),
-            SavedMongoConnections = repository.GetMongoDataSources(),
+            SavedDataSources = repository.GetDataSources(),
             Workspaces = repository.GetAllWorkspaces()
         };
     }
@@ -37,19 +38,19 @@ public sealed class GisAdminAppService(
         form.PropertyMappingsText = BuildPropertyMappingsText(c);
     }
 
-    public async Task<FormActionResult> SaveMongoDataSourceAsync(string connectionString,
+    public async Task<FormActionResult> SaveDataSourceAsync(SourceType databaseType, string connectionString,
         CancellationToken cancellationToken = default)
     {
         var result = new FormActionResult();
-        var probe = await mongo.ProbeConnectionAsync(connectionString, null, cancellationToken);
-        if (!probe.IsValid)
+        var validation = await ValidateDataSourceConnectionAsync(databaseType, connectionString, cancellationToken);
+        if (!validation.Ok)
         {
-            result.AddFieldError("ConnectionString", probe.ErrorMessage);
+            result.AddFieldError("ConnectionString", validation.Message ?? "Connection validation failed.");
             return result;
         }
 
-        await repository.CreateMongoDataSourceAsync(connectionString, cancellationToken);
-        result.SuccessMessage = "Saved MongoDB connection.";
+        await repository.CreateDataSourceAsync(databaseType, connectionString, cancellationToken);
+        result.SuccessMessage = $"Saved {databaseType.ToDisplayName()} connection.";
         return result;
     }
 
@@ -60,10 +61,10 @@ public sealed class GisAdminAppService(
 
         if (!input.DataSourceId.HasValue)
             result.AddFieldError(nameof(SaveGisConnectionInput.DataSourceId),
-                "Please select a saved MongoDB connection.");
+                "Please select a saved data source connection.");
 
         if (string.IsNullOrWhiteSpace(input.Entity))
-            result.AddFieldError(nameof(SaveGisConnectionInput.Entity), "Please select a collection.");
+            result.AddFieldError(nameof(SaveGisConnectionInput.Entity), "Please select a collection or table.");
 
         DataSourceSetting? dataSource = null;
         if (input.DataSourceId.HasValue)
@@ -71,14 +72,14 @@ public sealed class GisAdminAppService(
             dataSource = repository.GetDataSourceById(input.DataSourceId.Value);
             if (dataSource is null)
                 result.AddFieldError(nameof(SaveGisConnectionInput.DataSourceId),
-                    "Selected MongoDB connection was not found.");
+                    "Selected data source connection was not found.");
         }
 
         if (dataSource is not null)
         {
-            var probe = await mongo.ProbeConnectionAsync(dataSource.ConnectionString, input.Entity, cancellationToken);
-            if (!probe.IsValid)
-                result.AddFieldError(nameof(SaveGisConnectionInput.DataSourceId), probe.ErrorMessage);
+            var probeError = await ProbeEntityAsync(dataSource, input.Entity, cancellationToken);
+            if (probeError is not null)
+                result.AddFieldError(nameof(SaveGisConnectionInput.DataSourceId), probeError);
         }
 
         var propertyMappings = ParseMappings(input.PropertyMappingsText);
@@ -260,17 +261,31 @@ public sealed class GisAdminAppService(
         return result;
     }
 
-    public async Task<MongoValidationApiResponse> ValidateMongoConnectionAsync(string connectionString,
-        CancellationToken cancellationToken = default)
+    public async Task<DataSourceValidationApiResponse> ValidateDataSourceConnectionAsync(SourceType databaseType,
+        string connectionString, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
-            return new MongoValidationApiResponse(false, "Connection string is required.", null, null);
+            return new DataSourceValidationApiResponse(false, "Connection string is required.", null, null);
 
-        var probe = await mongo.ProbeConnectionAsync(connectionString, null, cancellationToken);
-        if (!probe.IsValid)
-            return new MongoValidationApiResponse(false, probe.ErrorMessage, null, null);
+        if (databaseType == SourceType.Mongodb)
+        {
+            var probe = await mongo.ProbeConnectionAsync(connectionString, null, cancellationToken);
+            if (!probe.IsValid)
+                return new DataSourceValidationApiResponse(false, probe.ErrorMessage, null, null);
 
-        return new MongoValidationApiResponse(true, null, probe.DatabaseName, probe.Collections);
+            return new DataSourceValidationApiResponse(true, null, probe.DatabaseName, probe.Collections);
+        }
+
+        if (databaseType.IsRelational())
+        {
+            var probe = await sql.ProbeConnectionAsync(databaseType, connectionString, null, cancellationToken);
+            if (!probe.IsValid)
+                return new DataSourceValidationApiResponse(false, probe.ErrorMessage, null, null);
+
+            return new DataSourceValidationApiResponse(true, null, probe.DatabaseName, probe.Tables);
+        }
+
+        return new DataSourceValidationApiResponse(false, $"Unsupported database type '{databaseType}'.", null, null);
     }
 
     public async Task<CollectionsApiResponse> GetCollectionsForDataSourceAsync(Guid dataSourceId,
@@ -282,35 +297,87 @@ public sealed class GisAdminAppService(
 
         try
         {
-            var collections = await mongo.ListCollectionNamesAsync(dataSource.ConnectionString, cancellationToken);
-            return new CollectionsApiResponse(true, null, collections);
+            if (dataSource.DatabaseType == SourceType.Mongodb)
+            {
+                var collections = await mongo.ListCollectionNamesAsync(dataSource.ConnectionString, cancellationToken);
+                return new CollectionsApiResponse(true, null, collections);
+            }
+
+            if (dataSource.DatabaseType.IsRelational())
+            {
+                var tables = await sql.ListTableNamesAsync(dataSource.DatabaseType, dataSource.ConnectionString,
+                    cancellationToken);
+                return new CollectionsApiResponse(true, null, tables);
+            }
+
+            return new CollectionsApiResponse(false, $"Unsupported database type '{dataSource.DatabaseType}'.", null);
         }
         catch (Exception ex)
         {
-            return new CollectionsApiResponse(false, $"MongoDB connection failed: {ex.Message}", null);
+            return new CollectionsApiResponse(false, $"Connection failed: {ex.Message}", null);
         }
     }
 
-    public async Task<MongoSampleApiResponse> GetMongoSampleAsync(Guid dataSourceId, string collectionName,
+    public async Task<DataSourceSampleApiResponse> GetSampleAsync(Guid dataSourceId, string entityName,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
-            return new MongoSampleApiResponse(false, "Collection is required.", false, [], "{}");
+        if (string.IsNullOrWhiteSpace(entityName))
+            return new DataSourceSampleApiResponse(false, "Collection or table is required.", false, [], "{}", null);
 
         var dataSource = repository.GetDataSourceById(dataSourceId);
         if (dataSource is null)
-            return new MongoSampleApiResponse(false, "Saved connection not found.", false, [], "{}");
+            return new DataSourceSampleApiResponse(false, "Saved connection not found.", false, [], "{}", null);
 
         try
         {
-            var sample = await mongo.GetSampleDocumentAsync(dataSource.ConnectionString, collectionName.Trim(),
-                cancellationToken);
-            return new MongoSampleApiResponse(true, null, sample.HasSample, sample.Fields, sample.SampleJson);
+            if (dataSource.DatabaseType == SourceType.Mongodb)
+            {
+                var sample = await mongo.GetSampleDocumentAsync(dataSource.ConnectionString, entityName.Trim(),
+                    cancellationToken);
+                return ToSampleResponse(sample.HasSample, sample.Fields, sample.SampleJson);
+            }
+
+            if (dataSource.DatabaseType.IsRelational())
+            {
+                var sample = await sql.GetSampleRowAsync(dataSource.DatabaseType, dataSource.ConnectionString,
+                    entityName.Trim(), cancellationToken);
+                return ToSampleResponse(sample.HasSample, sample.Fields, sample.SampleJson);
+            }
+
+            return new DataSourceSampleApiResponse(false, $"Unsupported database type '{dataSource.DatabaseType}'.",
+                false, [], "{}", null);
         }
         catch (Exception ex)
         {
-            return new MongoSampleApiResponse(false, $"Could not read sample document: {ex.Message}", false, [], "{}");
+            return new DataSourceSampleApiResponse(false, $"Could not read sample: {ex.Message}", false, [], "{}",
+                null);
         }
+    }
+
+    private static DataSourceSampleApiResponse ToSampleResponse(bool hasSample, IReadOnlyList<string> fields,
+        string sampleJson)
+    {
+        var suggested = GeometryTypeDetector.DetectFromSampleJson(sampleJson)?.ToString();
+        return new DataSourceSampleApiResponse(true, null, hasSample, fields, sampleJson, suggested);
+    }
+
+    private async Task<string?> ProbeEntityAsync(DataSourceSetting dataSource, string? entityName,
+        CancellationToken cancellationToken)
+    {
+        if (dataSource.DatabaseType == SourceType.Mongodb)
+        {
+            var probe = await mongo.ProbeConnectionAsync(dataSource.ConnectionString, entityName, cancellationToken);
+            return probe.IsValid ? null : probe.ErrorMessage;
+        }
+
+        if (dataSource.DatabaseType.IsRelational())
+        {
+            var probe = await sql.ProbeConnectionAsync(dataSource.DatabaseType, dataSource.ConnectionString, entityName,
+                cancellationToken);
+            return probe.IsValid ? null : probe.ErrorMessage;
+        }
+
+        return $"Unsupported database type '{dataSource.DatabaseType}'.";
     }
 
     private static string BuildPropertyMappingsText(GisConnection c)

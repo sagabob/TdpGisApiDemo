@@ -11,7 +11,7 @@ public interface IGisAdminAppService
 
     void MapGisConnectionToForm(GisConnectionFormState form, GisConnection connection);
 
-    Task<FormActionResult> SaveMongoDataSourceAsync(string connectionString,
+    Task<FormActionResult> SaveDataSourceAsync(SourceType databaseType, string connectionString,
         CancellationToken cancellationToken = default);
 
     Task<FormActionResult> SaveGisConnectionAsync(SaveGisConnectionInput input,
@@ -29,13 +29,13 @@ public interface IGisAdminAppService
     Task<FormActionResult> UpdateWorkspaceAccessTokenAsync(UpdateAccessTokenInput input,
         CancellationToken cancellationToken = default);
 
-    Task<MongoValidationApiResponse> ValidateMongoConnectionAsync(string connectionString,
-        CancellationToken cancellationToken = default);
+    Task<DataSourceValidationApiResponse> ValidateDataSourceConnectionAsync(SourceType databaseType,
+        string connectionString, CancellationToken cancellationToken = default);
 
     Task<CollectionsApiResponse> GetCollectionsForDataSourceAsync(Guid dataSourceId,
         CancellationToken cancellationToken = default);
 
-    Task<MongoSampleApiResponse> GetMongoSampleAsync(Guid dataSourceId, string collectionName,
+    Task<DataSourceSampleApiResponse> GetSampleAsync(Guid dataSourceId, string entityName,
         CancellationToken cancellationToken = default);
 }
 
@@ -48,7 +48,7 @@ public sealed class GisConnectionFormState
     public string Entity { get; set; } = string.Empty;
     public string EntityLabel { get; set; } = string.Empty;
     public string QueryField { get; set; } = string.Empty;
-    public GeometryType GeometryType { get; set; } = GeometryType.MultiPolygon;
+    public GeometryType GeometryType { get; set; } = GeometryType.Point;
     public Guid? GisWorkspaceId { get; set; }
     public string PropertyMappingsText { get; set; } = string.Empty;
 }

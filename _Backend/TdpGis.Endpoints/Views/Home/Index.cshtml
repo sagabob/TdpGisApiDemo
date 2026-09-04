@@ -1,4 +1,5 @@
 @using System.Globalization
+@using TdpGis.Domain
 @model GisConnectionPageViewModel
 @{
     ViewData["Title"] = "Query Configuration";
@@ -14,34 +15,45 @@
             return value;
         }
 
-        var schemeIndex = value.IndexOf("://", StringComparison.Ordinal);
+        // ADO.NET style: Password=...; or Pwd=...;
+        var masked = System.Text.RegularExpressions.Regex.Replace(
+            value,
+            @"(?i)(Password|Pwd)\s*=\s*[^;]*",
+            "$1=******");
+
+        var schemeIndex = masked.IndexOf("://", StringComparison.Ordinal);
         if (schemeIndex < 0)
         {
-            return value;
+            return masked;
         }
 
-        var atIndex = value.IndexOf('@', schemeIndex + 3);
+        var atIndex = masked.IndexOf('@', schemeIndex + 3);
         if (atIndex < 0)
         {
-            return value;
+            return masked;
         }
 
-        var credentials = value.Substring(schemeIndex + 3, atIndex - (schemeIndex + 3));
+        var credentials = masked.Substring(schemeIndex + 3, atIndex - (schemeIndex + 3));
         var colonIndex = credentials.IndexOf(':');
         if (colonIndex < 0)
         {
-            return value;
+            return masked;
         }
 
         var user = credentials.Substring(0, colonIndex);
         var maskedCredentials = $"{user}:******";
-        return value.Substring(0, schemeIndex + 3) + maskedCredentials + value.Substring(atIndex);
+        return masked.Substring(0, schemeIndex + 3) + maskedCredentials + masked.Substring(atIndex);
     }
 
     static string FormatAccessTokenExpiryDate(DateTime dt)
     {
         var local = dt.Kind == DateTimeKind.Utc ? dt.ToLocalTime() : dt;
         return local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
+
+    static string DataSourceOptionLabel(DataSourceSetting ds)
+    {
+        return $"[{ds.DatabaseType.ToDisplayName()}] {MaskConnectionString(ds.ConnectionString)}";
     }
 }
 
@@ -50,7 +62,7 @@
 <h1 class="h3">GIS Configuration</h1>
 @if (canManage)
 {
-    <p class="text-muted">MongoDB connections, GIS entities, and workspaces with access tokens.</p>
+    <p class="text-muted">Data sources (MongoDB, PostgreSQL, SQL Server), GIS entities, and workspaces with access tokens.</p>
 }
 else
 {
@@ -69,7 +81,7 @@ else
     @if (canManage)
     {
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="mongo-tab" data-bs-toggle="tab" data-bs-target="#mongo-tab-pane" type="button" role="tab">1. MongoDB</button>
+            <button class="nav-link active" id="datasource-tab" data-bs-toggle="tab" data-bs-target="#datasource-tab-pane" type="button" role="tab">1. Data source</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="gis-tab" data-bs-toggle="tab" data-bs-target="#gis-tab-pane" type="button" role="tab">2. GIS connection</button>
@@ -84,28 +96,30 @@ else
 <div class="tab-pane fade @(canManage ? "" : "show active")" id="summary-tab-pane" role="tabpanel" aria-labelledby="summary-tab">
     <p class="text-muted small mb-3">Read-only overview of everything stored for this app.</p>
 
-    <h2 class="h6">Saved MongoDB connections</h2>
+    <h2 class="h6">Saved data sources</h2>
     <div class="table-responsive mb-4">
         <table class="table table-sm table-bordered align-middle">
             <thead>
             <tr>
                 <th scope="col">Data source id</th>
+                <th scope="col">Type</th>
                 <th scope="col">Connection string</th>
             </tr>
             </thead>
             <tbody>
-            @if (Model.SavedMongoConnections.Count == 0)
+            @if (Model.SavedDataSources.Count == 0)
             {
                 <tr>
-                    <td colspan="2" class="text-muted">None</td>
+                    <td colspan="3" class="text-muted">None</td>
                 </tr>
             }
             else
             {
-                foreach (var ds in Model.SavedMongoConnections)
+                foreach (var ds in Model.SavedDataSources)
                 {
                     <tr>
                         <td class="text-nowrap font-monospace small">@ds.Id</td>
+                        <td>@ds.DatabaseType.ToDisplayName()</td>
                         <td class="small">@MaskConnectionString(ds.ConnectionString)</td>
                     </tr>
                 }
@@ -121,8 +135,8 @@ else
             <tr>
                 <th scope="col">GIS connection id</th>
                 <th scope="col">Name</th>
-                <th scope="col">Collection</th>
-                <th scope="col">Mongo data source id</th>
+                <th scope="col">Entity</th>
+                <th scope="col">Data source</th>
                 <th scope="col">Workspace</th>
             </tr>
             </thead>
@@ -142,11 +156,12 @@ else
                         : c.GisWorkspaceId.HasValue
                             ? c.GisWorkspaceId.Value.ToString()
                             : "—";
+                    var dsType = c.DataSource is not null ? c.DataSource.DatabaseType.ToDisplayName() : "—";
                     <tr>
                         <td class="text-nowrap font-monospace small">@c.Id</td>
                         <td>@c.Name</td>
                         <td class="text-muted">@c.Entity</td>
-                        <td class="text-nowrap font-monospace small">@c.DataSourceId</td>
+                        <td class="small">@dsType <span class="font-monospace">@c.DataSourceId</span></td>
                         <td class="small">@wsLabel</td>
                     </tr>
                 }
@@ -235,24 +250,24 @@ else
 
 @if (canManage)
 {
-    <div class="tab-pane fade show active" id="mongo-tab-pane" role="tabpanel" aria-labelledby="mongo-tab">
+    <div class="tab-pane fade show active" id="datasource-tab-pane" role="tabpanel" aria-labelledby="datasource-tab">
         <div class="card mb-3">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h2 class="h6 mb-0">Saved MongoDB Connections</h2>
-                    <span class="badge text-bg-primary">@Model.SavedMongoConnections.Count</span>
+                    <h2 class="h6 mb-0">Saved data sources</h2>
+                    <span class="badge text-bg-primary">@Model.SavedDataSources.Count</span>
                 </div>
-                <label class="form-label">Review Saved Connections</label>
+                <label class="form-label">Review saved connections</label>
                 <select class="form-select" id="savedConnectionsReviewSelect">
-                    @if (Model.SavedMongoConnections.Count == 0)
+                    @if (Model.SavedDataSources.Count == 0)
                     {
                         <option value="">No saved connections</option>
                     }
                     else
                     {
-                        @foreach (var ds in Model.SavedMongoConnections)
+                        @foreach (var ds in Model.SavedDataSources)
                         {
-                            <option value="@ds.Id">@MaskConnectionString(ds.ConnectionString)</option>
+                            <option value="@ds.Id" data-db-type="@ds.DatabaseType">@DataSourceOptionLabel(ds)</option>
                         }
                     }
                 </select>
@@ -260,21 +275,31 @@ else
             </div>
         </div>
 
-        <form asp-action="SaveMongoConnection" method="post">
+        <form asp-action="SaveDataSourceConnection" method="post">
             @Html.AntiForgeryToken()
             <div class="mb-3">
-                <label asp-for="MongoForm.ConnectionString" class="form-label"></label>
-                <textarea asp-for="MongoForm.ConnectionString" class="form-control" rows="3" placeholder="mongodb://localhost:27017/your-database"></textarea>
-                <small class="text-muted">Include database in URL path: mongodb://.../&lt;database&gt;</small>
-                <span asp-validation-for="MongoForm.ConnectionString" class="text-danger"></span>
+                <label asp-for="DataSourceForm.DatabaseType" class="form-label"></label>
+                <select asp-for="DataSourceForm.DatabaseType" class="form-select" id="dataSourceTypeSelect">
+                    <option value="@SourceType.Mongodb">MongoDB</option>
+                    <option value="@SourceType.Postgres">PostgreSQL</option>
+                    <option value="@SourceType.SqlServer">SQL Server</option>
+                </select>
+                <span asp-validation-for="DataSourceForm.DatabaseType" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="DataSourceForm.ConnectionString" class="form-label"></label>
+                <textarea asp-for="DataSourceForm.ConnectionString" class="form-control" rows="3" id="DataSourceForm_ConnectionString"
+                          placeholder="mongodb://localhost:27017/your-database"></textarea>
+                <small class="text-muted" id="dataSourceConnectionHint">Include database in URL path: mongodb://.../&lt;database&gt;</small>
+                <span asp-validation-for="DataSourceForm.ConnectionString" class="text-danger"></span>
             </div>
 
             <div class="d-flex gap-2 align-items-center mb-3">
-                <button type="button" class="btn btn-outline-primary" id="validateMongoBtn">Validate MongoDB</button>
-                <span id="mongoStatus" class="small text-muted"></span>
+                <button type="button" class="btn btn-outline-primary" id="validateDataSourceBtn">Validate connection</button>
+                <span id="dataSourceStatus" class="small text-muted"></span>
             </div>
 
-            <button type="submit" class="btn btn-primary">Save MongoDB Connection</button>
+            <button type="submit" class="btn btn-primary">Save data source</button>
         </form>
     </div>
 
@@ -306,17 +331,17 @@ else
             <div class="mb-3">
                 <label asp-for="Form.DataSourceId" class="form-label"></label>
                 <select asp-for="Form.DataSourceId" class="form-select" id="dataSourceSelect">
-                    <option value="">Select saved MongoDB connection</option>
-                    @foreach (var ds in Model.SavedMongoConnections)
+                    <option value="">Select saved data source</option>
+                    @foreach (var ds in Model.SavedDataSources)
                     {
-                        <option value="@ds.Id">@MaskConnectionString(ds.ConnectionString)</option>
+                        <option value="@ds.Id" data-db-type="@ds.DatabaseType">@DataSourceOptionLabel(ds)</option>
                     }
                 </select>
                 <span asp-validation-for="Form.DataSourceId" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
-                <label asp-for="Form.Entity" class="form-label"></label>
+                <label asp-for="Form.Entity" class="form-label" id="entityFieldLabel">Collection / table</label>
                 <select asp-for="Form.Entity" class="form-select" id="entitySelect" data-current-value="@Model.Form.Entity" disabled>
                     <option value="">Select saved connection first</option>
                 </select>
@@ -324,8 +349,8 @@ else
             </div>
 
             <div class="mb-3">
-                <label class="form-label mb-1">Sample Document</label>
-                <pre id="sampleDocPreview" class="p-3 border rounded bg-light" style="max-height: 260px; overflow: auto;">Select a connection and collection to preview one record.</pre>
+                <label class="form-label mb-1" id="samplePreviewLabel">Sample record</label>
+                <pre id="sampleDocPreview" class="p-3 border rounded bg-light" style="max-height: 260px; overflow: auto;">Select a connection and collection/table to preview one record.</pre>
                 <div id="sampleFields" class="small text-muted"></div>
             </div>
 
@@ -360,7 +385,9 @@ else
 
             <div class="mb-3">
                 <label asp-for="Form.GeometryType" class="form-label"></label>
-                <select asp-for="Form.GeometryType" class="form-select" asp-items="Html.GetEnumSelectList<GeometryType>()"></select>
+                <input type="hidden" name="Form.GeometryType" id="geometryTypeValue" value="@Model.Form.GeometryType"/>
+                <input type="text" class="form-control" id="geometryTypeDisplay" value="" readonly tabindex="-1" placeholder="Detected from sample…"/>
+                <small class="text-muted" id="geometryTypeHint">Exact type from sample WKT/GeoJSON (e.g. Point, Polygon — not remapped).</small>
                 <span asp-validation-for="Form.GeometryType" class="text-danger"></span>
             </div>
 
@@ -732,11 +759,14 @@ else
     {
         <script>
         (function () {
-            const validateBtn = document.getElementById('validateMongoBtn');
-            const statusEl = document.getElementById('mongoStatus');
-            const mongoConnectionEl = document.getElementById('MongoForm_ConnectionString');
+            const validateBtn = document.getElementById('validateDataSourceBtn');
+            const statusEl = document.getElementById('dataSourceStatus');
+            const dataSourceTypeSelect = document.getElementById('dataSourceTypeSelect');
+            const dataSourceConnectionEl = document.getElementById('DataSourceForm_ConnectionString');
+            const dataSourceConnectionHint = document.getElementById('dataSourceConnectionHint');
             const dataSourceSelect = document.getElementById('dataSourceSelect');
             const entitySelect = document.getElementById('entitySelect');
+            const entityFieldLabel = document.getElementById('entityFieldLabel');
             const entityLabelEl = document.getElementById('Form_EntityLabel');
             const queryFieldSelect = document.getElementById('queryFieldSelect');
             const mappingTextEl = document.getElementById('Form_PropertyMappingsText');
@@ -752,6 +782,48 @@ else
             const existingQueryFieldValue = queryFieldSelect.dataset.currentValue || '';
             let currentFields = [];
             let mappingRows = [];
+
+            const connectionHints = {
+                Mongodb: {
+                    placeholder: 'mongodb://localhost:27017/your-database',
+                    hint: 'Include database in URL path: mongodb://.../<database>'
+                },
+                Postgres: {
+                    placeholder: 'Host=localhost;Port=5432;Database=gis;Username=user;Password=secret;SSL Mode=Require;Search Path=ccc,public',
+                    hint: 'Npgsql keyword string. Tables in any schema (e.g. ccc.*) are listed as schema.table. Optional: Search Path=ccc,public'
+                },
+                SqlServer: {
+                    placeholder: 'Server=localhost;Database=GisDb;User Id=sa;Password=secret;TrustServerCertificate=True',
+                    hint: 'Use a SQL Server connection string (Server=...;Database=...;User Id=...;Password=...).'
+                }
+            };
+
+            function selectedDataSourceType() {
+                const opt = dataSourceSelect?.selectedOptions?.[0];
+                return opt?.getAttribute('data-db-type') || 'Mongodb';
+            }
+
+            function entityNoun(dbType) {
+                return dbType === 'Mongodb' ? 'collection' : 'table';
+            }
+
+            function updateConnectionHint() {
+                const type = dataSourceTypeSelect?.value || 'Mongodb';
+                const cfg = connectionHints[type] || connectionHints.Mongodb;
+                if (dataSourceConnectionEl) {
+                    dataSourceConnectionEl.placeholder = cfg.placeholder;
+                }
+                if (dataSourceConnectionHint) {
+                    dataSourceConnectionHint.textContent = cfg.hint;
+                }
+            }
+
+            function updateEntityLabels() {
+                const noun = entityNoun(selectedDataSourceType());
+                if (entityFieldLabel) {
+                    entityFieldLabel.textContent = noun.charAt(0).toUpperCase() + noun.slice(1);
+                }
+            }
 
             const gisConnectionPicker = document.getElementById('gisConnectionPicker');
             if (gisConnectionPicker) {
@@ -868,56 +940,62 @@ else
 
             async function loadCollectionsForSavedConnection() {
                 const dataSourceId = dataSourceSelect.value;
+                const noun = entityNoun(selectedDataSourceType());
+                updateEntityLabels();
                 entitySelect.innerHTML = '';
                 entitySelect.disabled = true;
                 resetSample();
 
                 if (!dataSourceId) {
                     entitySelect.innerHTML = '<option value="">Select saved connection first</option>';
-                    queryFieldSelect.innerHTML = '<option value="">Select collection first</option>';
+                    queryFieldSelect.innerHTML = '<option value="">Select ' + noun + ' first</option>';
                     queryFieldSelect.disabled = true;
                     return;
                 }
 
-                entitySelect.innerHTML = '<option value="">Loading collections...</option>';
+                entitySelect.innerHTML = '<option value="">Loading ' + noun + 's...</option>';
                 try {
                     const result = await postJson('@Url.Action("GetCollectionsForSavedConnection", "Home")', { dataSourceId });
                     const collections = result.collections || [];
                     entitySelect.innerHTML = '';
 
                     if (collections.length === 0) {
-                        entitySelect.innerHTML = '<option value="">No collections found</option>';
+                        entitySelect.innerHTML = '<option value="">No ' + noun + 's found</option>';
                         queryFieldSelect.innerHTML = '<option value="">No fields available</option>';
                         queryFieldSelect.disabled = true;
                         return;
                     }
 
-                    entitySelect.append(new Option('Select collection', ''));
+                    entitySelect.append(new Option('Select ' + noun, ''));
                     for (const name of collections) {
                         entitySelect.append(new Option(name, name));
                     }
                     entitySelect.disabled = false;
 
-                    if (existingEntityValue && collections.includes(existingEntityValue)) {
-                        entitySelect.value = existingEntityValue;
-                        await loadSampleForCollection(existingEntityValue);
+                    const matchedExisting = existingEntityValue
+                        ? collections.find(x => String(x).toLowerCase() === existingEntityValue.toLowerCase())
+                        : null;
+                    if (matchedExisting) {
+                        entitySelect.value = matchedExisting;
+                        await loadSampleForCollection(matchedExisting);
                     }
                 } catch (error) {
-                    entitySelect.innerHTML = '<option value="">Failed to load collections</option>';
-                    samplePreviewEl.textContent = error.message;
+                    entitySelect.innerHTML = '<option value="">Failed to load ' + noun + 's</option>';
+                    samplePreviewEl.textContent = error.message || ('Failed to load ' + noun + 's');
                 }
             }
 
             async function loadSampleForCollection(collectionName) {
+                const noun = entityNoun(selectedDataSourceType());
                 if (!collectionName || !dataSourceSelect.value) {
                     resetSample();
-                    queryFieldSelect.innerHTML = '<option value="">Select collection first</option>';
+                    queryFieldSelect.innerHTML = '<option value="">Select ' + noun + ' first</option>';
                     queryFieldSelect.disabled = true;
                     return;
                 }
 
                 try {
-                    const sample = await postJson('@Url.Action("GetMongoSampleForSavedConnection", "Home")', {
+                    const sample = await postJson('@Url.Action("GetSampleForSavedConnection", "Home")', {
                         dataSourceId: dataSourceSelect.value,
                         collectionName: collectionName
                     });
@@ -927,7 +1005,7 @@ else
                     const queryFields = currentFields.filter(x => typeof x === 'string' && !x.includes('.'));
                     queryFieldSelect.innerHTML = '';
                     if (queryFields.length === 0) {
-                        queryFieldSelect.innerHTML = '<option value="">No non-nested fields found</option>';
+                        queryFieldSelect.innerHTML = '<option value="">No fields found</option>';
                         queryFieldSelect.disabled = true;
                     } else {
                         queryFieldSelect.append(new Option('Select query field', ''));
@@ -939,13 +1017,15 @@ else
                     samplePreviewEl.textContent = sample.sampleJson || '{}';
                     sampleFieldsEl.textContent = currentFields.length > 0
                         ? ('Fields: ' + currentFields.join(', '))
-                        : 'Collection is empty.';
+                        : (noun.charAt(0).toUpperCase() + noun.slice(1) + ' is empty.');
 
                     if (existingQueryFieldValue && queryFields.includes(existingQueryFieldValue)) {
                         queryFieldSelect.value = existingQueryFieldValue;
                     } else if (!queryFieldSelect.value && queryFields.length > 0) {
                         queryFieldSelect.value = queryFields[0];
                     }
+
+                    applySuggestedGeometryType(sample.suggestedGeometryType);
                 } catch (error) {
                     resetSample();
                     queryFieldSelect.innerHTML = '<option value="">Failed to load fields</option>';
@@ -954,16 +1034,63 @@ else
                 }
             }
 
+            function applySuggestedGeometryType(suggested) {
+                const valueInput = document.getElementById('geometryTypeValue');
+                const displayInput = document.getElementById('geometryTypeDisplay');
+                const hint = document.getElementById('geometryTypeHint');
+
+                if (!suggested) {
+                    if (displayInput) {
+                        displayInput.value = '';
+                        displayInput.placeholder = 'No geometry type detected in sample';
+                    }
+                    if (hint) {
+                        hint.textContent = 'Exact type from sample WKT/GeoJSON (e.g. Point, Polygon — not remapped).';
+                    }
+                    return;
+                }
+
+                if (valueInput) {
+                    valueInput.value = suggested;
+                }
+                if (displayInput) {
+                    displayInput.value = suggested;
+                }
+                if (hint) {
+                    hint.textContent = 'From sample: ' + suggested;
+                }
+            }
+
+            // Show saved value when editing; sample load will overwrite with exact detected type.
+            (function initGeometryTypeDisplay() {
+                const valueInput = document.getElementById('geometryTypeValue');
+                const displayInput = document.getElementById('geometryTypeDisplay');
+                if (valueInput && displayInput && valueInput.value) {
+                    displayInput.value = valueInput.value;
+                }
+            })();
+
+
+            if (dataSourceTypeSelect) {
+                dataSourceTypeSelect.addEventListener('change', updateConnectionHint);
+                updateConnectionHint();
+            }
+
             validateBtn.addEventListener('click', async function () {
-                const connectionString = mongoConnectionEl.value.trim();
+                const connectionString = dataSourceConnectionEl.value.trim();
+                const databaseType = dataSourceTypeSelect?.value || 'Mongodb';
+                const noun = entityNoun(databaseType);
                 if (!connectionString) {
-                    setStatus('Please enter a MongoDB connection string.', true);
+                    setStatus('Please enter a connection string.', true);
                     return;
                 }
                 try {
-                    const result = await postJson('@Url.Action("ValidateMongoConnection", "Home")', { connectionString });
+                    const result = await postJson('@Url.Action("ValidateDataSourceConnection", "Home")', {
+                        databaseType,
+                        connectionString
+                    });
                     const total = (result.collections || []).length;
-                    setStatus('Valid connection. Found ' + total + ' collection(s).', false);
+                    setStatus('Valid connection. Found ' + total + ' ' + noun + '(s).', false);
                 } catch (error) {
                     setStatus(error.message, true);
                 }

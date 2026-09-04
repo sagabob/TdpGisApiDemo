@@ -71,7 +71,7 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
 
         var dataSourceExists =
             await dbContext.DataSourceSettings.AnyAsync(d => d.Id == dataSourceId, cancellationToken);
-        if (!dataSourceExists) throw new InvalidOperationException("Selected MongoDB connection was not found.");
+        if (!dataSourceExists) throw new InvalidOperationException("Selected data source connection was not found.");
 
         // Avoid loading a tracked graph: tracked DELETE/UPDATE + SaveChanges can report 0 rows affected
         // (DbUpdateConcurrencyException). Use bulk ExecuteDelete/ExecuteUpdate, then INSERT new mappings
@@ -121,13 +121,21 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
         return GetConnectionById(id);
     }
 
+    public List<DataSourceSetting> GetDataSources(SourceType? databaseType = null)
+    {
+        var query = dbContext.DataSourceSettings.AsNoTracking();
+        if (databaseType.HasValue)
+            query = query.Where(x => x.DatabaseType == databaseType.Value);
+
+        return query
+            .OrderBy(x => x.DatabaseType)
+            .ThenBy(x => x.ConnectionString)
+            .ToList();
+    }
+
     public List<DataSourceSetting> GetMongoDataSources()
     {
-        return dbContext.DataSourceSettings
-            .AsNoTracking()
-            .Where(x => x.DatabaseType == SourceType.Mongodb)
-            .OrderBy(x => x.ConnectionString)
-            .ToList();
+        return GetDataSources(SourceType.Mongodb);
     }
 
     public DataSourceSetting? GetDataSourceById(Guid id)
@@ -137,23 +145,29 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
             .FirstOrDefault(x => x.Id == id);
     }
 
-    public async Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString,
+    public async Task<DataSourceSetting> CreateDataSourceAsync(SourceType databaseType, string connectionString,
         CancellationToken cancellationToken = default)
     {
         var normalized = connectionString.Trim();
         var existing = dbContext.DataSourceSettings
-            .FirstOrDefault(x => x.DatabaseType == SourceType.Mongodb && x.ConnectionString == normalized);
+            .FirstOrDefault(x => x.DatabaseType == databaseType && x.ConnectionString == normalized);
         if (existing is not null) return existing;
 
         var ds = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
             ConnectionString = normalized,
-            DatabaseType = SourceType.Mongodb
+            DatabaseType = databaseType
         };
         var entity = await dbContext.DataSourceSettings.AddAsync(ds, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return entity.Entity;
+    }
+
+    public Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString,
+        CancellationToken cancellationToken = default)
+    {
+        return CreateDataSourceAsync(SourceType.Mongodb, connectionString, cancellationToken);
     }
 
     public List<GisWorkspace> GetAllWorkspaces()

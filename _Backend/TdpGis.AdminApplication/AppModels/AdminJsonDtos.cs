@@ -1,16 +1,17 @@
 namespace TdpGis.AdminApplication.AppModels;
 
-public sealed record MongoValidationApiResponse(
+public sealed record DataSourceValidationApiResponse(
     bool Ok,
     string? Message,
     string? DatabaseName,
-    IReadOnlyList<string>? Collections);
+    IReadOnlyList<string>? Entities);
 
 public sealed record CollectionsApiResponse(bool Ok, string? Message, IReadOnlyList<string>? Collections);
 
-public sealed record MongoSampleApiResponse(
+public sealed record DataSourceSampleApiResponse(
     bool Ok,
     string? Message,
     bool HasSample,
     IReadOnlyList<string> Fields,
-    string SampleJson);
+    string SampleJson,
+    string? SuggestedGeometryType = null);

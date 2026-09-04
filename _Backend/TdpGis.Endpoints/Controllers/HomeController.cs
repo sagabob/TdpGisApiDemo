@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TdpGis.AdminApplication.AppModels;
 using TdpGis.AdminApplication.Services;
+using TdpGis.Domain;
 using TdpGis.Endpoints.Models;
 using TdpGis.Endpoints.Security;
 
@@ -41,22 +42,22 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
     [HttpPost]
     [Authorize(Policy = "GisConfigurationAdmin")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveMongoConnection(
-        [Bind(Prefix = "MongoForm")] MongoConnectionFormViewModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> SaveDataSourceConnection(
+        [Bind(Prefix = "DataSourceForm")] DataSourceConnectionFormViewModel model, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
             var pageModel = BuildPageModel();
-            pageModel.MongoForm = model;
+            pageModel.DataSourceForm = model;
             return View("Index", pageModel);
         }
 
-        var result = await gisAdmin.SaveMongoDataSourceAsync(model.ConnectionString, cancellationToken);
+        var result = await gisAdmin.SaveDataSourceAsync(model.DatabaseType, model.ConnectionString, cancellationToken);
         if (!result.IsSuccess)
         {
             ApplyFormResultToModelState(result);
             var pageModel = BuildPageModel();
-            pageModel.MongoForm = model;
+            pageModel.DataSourceForm = model;
             return View("Index", pageModel);
         }
 
@@ -231,17 +232,25 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
 
     [HttpPost]
     [Authorize(Policy = "GisConfigurationAdmin")]
-    public async Task<IActionResult> ValidateMongoConnection([FromBody] MongoValidationRequest request,
+    public async Task<IActionResult> ValidateDataSourceConnection([FromBody] DataSourceValidationRequest? request,
         CancellationToken cancellationToken)
     {
-        var response = await gisAdmin.ValidateMongoConnectionAsync(request.ConnectionString, cancellationToken);
+        if (request is null || string.IsNullOrWhiteSpace(request.ConnectionString))
+            return BadRequest(new { message = "Connection string is required." });
+
+        if (!Enum.IsDefined(request.DatabaseType))
+            return BadRequest(new { message = $"Unsupported database type '{request.DatabaseType}'." });
+
+        var response =
+            await gisAdmin.ValidateDataSourceConnectionAsync(request.DatabaseType, request.ConnectionString,
+                cancellationToken);
         if (!response.Ok)
             return BadRequest(new { message = response.Message });
 
         return Ok(new
         {
             databaseName = response.DatabaseName,
-            collections = response.Collections
+            collections = response.Entities
         });
     }
 
@@ -259,11 +268,10 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
 
     [HttpPost]
     [Authorize(Policy = "GisConfigurationAdmin")]
-    public async Task<IActionResult> GetMongoSampleForSavedConnection([FromBody] SavedConnectionSampleRequest request,
+    public async Task<IActionResult> GetSampleForSavedConnection([FromBody] SavedConnectionSampleRequest request,
         CancellationToken cancellationToken)
     {
-        var response =
-            await gisAdmin.GetMongoSampleAsync(request.DataSourceId, request.CollectionName, cancellationToken);
+        var response = await gisAdmin.GetSampleAsync(request.DataSourceId, request.CollectionName, cancellationToken);
         if (!response.Ok)
             return BadRequest(new { message = response.Message });
 
@@ -271,7 +279,8 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
         {
             hasSample = response.HasSample,
             fields = response.Fields,
-            sampleJson = response.SampleJson
+            sampleJson = response.SampleJson,
+            suggestedGeometryType = response.SuggestedGeometryType
         });
     }
 
@@ -306,7 +315,7 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
         return new GisConnectionPageViewModel
         {
             ExistingConnections = data.ExistingConnections.ToList(),
-            SavedMongoConnections = data.SavedMongoConnections.ToList(),
+            SavedDataSources = data.SavedDataSources.ToList(),
             Workspaces = data.Workspaces.ToList()
         };
     }
@@ -363,8 +372,9 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
         return values.Any(t => string.Equals(t, "true", StringComparison.Ordinal));
     }
 
-    public sealed class MongoValidationRequest
+    public sealed class DataSourceValidationRequest
     {
+        public SourceType DatabaseType { get; set; } = SourceType.Mongodb;
         public string ConnectionString { get; set; } = string.Empty;
     }
 

@@ -29,8 +29,13 @@ public class GisConnection
 
 public enum GeometryType
 {
+    Point,
     MultiPoint,
-    MultiPolygon
+    LineString,
+    MultiLineString,
+    Polygon,
+    MultiPolygon,
+    GeometryCollection
 }
 
 public enum PropertyType
@@ -57,7 +62,8 @@ public class DataSourceSetting
 public enum SourceType
 {
     Mongodb,
-    Postgres
+    Postgres,
+    SqlServer
 }
 
 public class GisWorkspace

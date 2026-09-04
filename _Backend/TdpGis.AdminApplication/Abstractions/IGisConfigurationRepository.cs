@@ -25,9 +25,14 @@ public interface IGisConfigurationRepository
         List<PropertyMapping> propertyMappings,
         CancellationToken cancellationToken = default);
 
+    List<DataSourceSetting> GetDataSources(SourceType? databaseType = null);
+
     List<DataSourceSetting> GetMongoDataSources();
 
     DataSourceSetting? GetDataSourceById(Guid id);
+
+    Task<DataSourceSetting> CreateDataSourceAsync(SourceType databaseType, string connectionString,
+        CancellationToken cancellationToken = default);
 
     Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString,
         CancellationToken cancellationToken = default);

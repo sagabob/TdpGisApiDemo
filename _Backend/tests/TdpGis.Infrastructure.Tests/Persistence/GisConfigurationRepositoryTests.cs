@@ -391,6 +391,55 @@ public class GisConfigurationRepositoryTests
     }
 
     [Fact]
+    public async Task CreateDataSourceAsync_ShouldPersistPostgresAndSqlServer()
+    {
+        await using var fixture = await SqliteDbContextFactory.CreateAsync();
+        var sut = new GisConfigurationRepository(fixture.DbContext);
+
+        var pg = await sut.CreateDataSourceAsync(SourceType.Postgres, "Host=localhost;Database=gis",
+            TestContext.Current.CancellationToken);
+        var sql = await sut.CreateDataSourceAsync(SourceType.SqlServer, "Server=localhost;Database=GisDb",
+            TestContext.Current.CancellationToken);
+
+        pg.DatabaseType.Should().Be(SourceType.Postgres);
+        sql.DatabaseType.Should().Be(SourceType.SqlServer);
+        sut.GetDataSources().Should().HaveCount(2);
+        sut.GetMongoDataSources().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetDataSources_ShouldFilterByType_WhenRequested()
+    {
+        await using var fixture = await SqliteDbContextFactory.CreateAsync();
+        fixture.DbContext.DataSourceSettings.AddRange(
+            new DataSourceSetting
+            {
+                Id = Guid.NewGuid(),
+                ConnectionString = "mongodb://a",
+                DatabaseType = SourceType.Mongodb
+            },
+            new DataSourceSetting
+            {
+                Id = Guid.NewGuid(),
+                ConnectionString = "Host=pg",
+                DatabaseType = SourceType.Postgres
+            },
+            new DataSourceSetting
+            {
+                Id = Guid.NewGuid(),
+                ConnectionString = "Server=sql",
+                DatabaseType = SourceType.SqlServer
+            });
+        await fixture.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new GisConfigurationRepository(fixture.DbContext);
+
+        sut.GetDataSources().Should().HaveCount(3);
+        sut.GetDataSources(SourceType.Postgres).Should().ContainSingle(x => x.DatabaseType == SourceType.Postgres);
+        sut.GetDataSources(SourceType.SqlServer).Should().ContainSingle(x => x.DatabaseType == SourceType.SqlServer);
+    }
+
+    [Fact]
     public async Task GetMongoDataSources_ShouldExcludeNonMongo_AndOrderByConnectionString()
     {
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
@@ -731,6 +780,6 @@ public class GisConfigurationRepositoryTests
             [],
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*MongoDB*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*data source*");
     }
 }
