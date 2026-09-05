@@ -1,282 +1,358 @@
 # TDP GIS API Backend
 
-A comprehensive Geographic Information System (GIS) API built with ASP.NET Core, designed to manage spatial data, workspace configurations, and GIS queries with enterprise-grade security and scalability.
+ASP.NET Core backend for the TDP GIS demo: a query API (`TdpGis.Api`), an admin UI (`TdpGis.Endpoints`), and shared domain/application/infrastructure layers.
 
 ## Overview
 
-The TDP GIS API backend provides a robust REST API for managing geospatial data and configurations. It features multi-layered authentication, MongoDB integration for metadata, and Entity Framework Core for relational data management.
+- **TdpGis.Api** — REST GIS query API (FastEndpoints + Swagger). Callers authenticate with Microsoft Entra ID and authorize per workspace with an opaque access token.
+- **TdpGis.Endpoints** — Admin MVC UI (OpenID Connect cookie). Configure data sources, GIS entities, workspaces, and workspace tokens.
+- **Shared app database** — PostgreSQL via EF Core (`ConnectionStrings:Database`). Holds configuration metadata (sources, entities, workspaces, tokens).
+- **GIS data sources** — Configured in admin; GIS queries run against **MongoDB**, **PostgreSQL**, or **SQL Server** at request time.
 
 ## Architecture
 
-The backend follows a layered architecture:
+| Project | Role |
+|---------|------|
+| `TdpGis.Api` | HTTP API, Entra JWT + workspace token, GIS entity list and queries |
+| `TdpGis.Endpoints` | Admin UI, Entra OIDC cookie, roles `Gis.Admin` / `Gis.Viewer` |
+| `TdpGis.Application` | API-facing contracts and DTOs |
+| `TdpGis.AdminApplication` | Admin abstractions (metadata probes, etc.) |
+| `TdpGis.Infrastructure` | EF Core, Mongo/SQL query services, DI |
+| `TdpGis.Domain` | Entities (`GisConnection`, `DataSourceSetting`, workspaces, tokens) |
 
-- **TdpGis.Api** - HTTP API layer with FastEndpoints, OpenAPI/Swagger documentation, and authentication
-- **TdpGis.Endpoints** - Admin UI with MVC controllers and views for administrative functionality
-- **TdpGis.LocalApi** - Local development API with database services
-- **TdpGis.Application** - Business logic and application services
-- **TdpGis.Infrastructure** - Data persistence, configurations, and external integrations
-- **TdpGis.Domain** - Core domain models and entities
-- **TdpGis.AdminApplication** - Administrative services and configuration models for the admin UI
+`GisDataService` routes GIS data access by `DataSource.DatabaseType` to Mongo or relational SQL implementations.
 
 ## Technology Stack
 
-- **Framework**: .NET 10.0
-- **API Framework**: FastEndpoints 8.1.0
-- **Authentication**: Microsoft Entra ID (Azure AD) with JWT Bearer tokens
-- **Database**: Entity Framework Core + MongoDB support
-- **Documentation**: NSwag/OpenAPI with Swagger UI
-- **Health Checks**: Built-in health check endpoints with EF Core integration
-- **Docker**: Multi-stage Docker builds supported
+- .NET 10
+- FastEndpoints 8.x + NSwag Swagger
+- Microsoft Entra ID (`Microsoft.Identity.Web`)
+- EF Core + PostgreSQL (app/config DB)
+- MongoDB, PostgreSQL, SQL Server (GIS entity data)
+- xunit.v3 + Microsoft.Testing.Platform (`global.json`)
 
 ## Prerequisites
 
-- .NET 10.0 SDK or later
-- Visual Studio 2024 or Visual Studio Code with C# extensions
-- Database connection string (SQL Server or compatible)
-- MongoDB connection string (for metadata storage)
-- Azure AD application registration (for authentication)
+- .NET 10 SDK
+- PostgreSQL connection for the **app** database
+- Entra app registrations (API resource + optional admin web app + caller)
+- GIS source credentials as needed (Mongo / Postgres / SQL Server)
 
 ## Getting Started
 
-### 1. Clone the Repository
-
 ```bash
-git clone <repository-url>
 cd TdpGisApiDemo/_Backend
+dotnet restore
+dotnet ef database update -p TdpGis.Infrastructure -s TdpGis.Api
+dotnet run --project TdpGis.Api
+dotnet run --project TdpGis.Endpoints
 ```
 
-### 2. Configuration
+### Configuration (`TdpGis.Api`)
 
-Create or update `appsettings.Development.json`:
+`appsettings.Development.json` (or User Secrets):
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*",
   "AzureAd": {
     "Instance": "https://login.microsoftonline.com/",
-    "TenantId": "your-tenant-id",
-    "ClientId": "your-client-id",
-    "Audience": "your-audience",
+    "TenantId": "<directory-tenant-id>",
+    "ClientId": "<api-app-client-id>",
+    "Audience": "api://<api-app-client-id>",
     "ApiAccessAppRole": "TdpGisApi.Access"
   },
   "ConnectionStrings": {
-    "Database": "Server=localhost;Database=TdpGisDb;Trusted_Connection=true;"
+    "Database": "Host=...;Port=...;Database=...;Username=...;Password=...;Include Error Detail=true"
   }
 }
 ```
 
-### 3. Restore Dependencies
+Prefer secrets over committing passwords:
 
 ```bash
-dotnet restore
+dotnet user-secrets set "ConnectionStrings:Database" "Host=...;..." --project TdpGis.Api
 ```
 
-### 4. Database Setup
+### Local URLs (launch profiles)
 
-Apply Entity Framework Core migrations:
+| App | HTTPS | HTTP |
+|-----|-------|------|
+| `TdpGis.Api` | `https://localhost:7255` | `http://localhost:5236` |
+| `TdpGis.Endpoints` | `https://localhost:7036` | `http://localhost:5291` |
 
-```bash
-dotnet ef database update -p TdpGis.Infrastructure -s TdpGis.Api
+- Swagger: `https://localhost:7255/swagger`
+- Health: `GET /health` (live), `GET /health/ready` (DB) — **anonymous**
+
+---
+
+## Authentication and authorization
+
+Security is split by product surface. **Do not mix** the admin web app registration with the API resource registration unless you intentionally design one app for both.
+
+### Mental model
+
+```text
+Caller (frontend BFF / Postman / daemon)
+  │
+  ├─ Authorization: Bearer <Entra access token>
+  │     → proves identity + API app role (authentication + Entra authorization)
+  │
+  └─ X-Access-Token: <workspace opaque token>
+        → proves access to a specific GIS workspace (application authorization)
+              │
+              ▼
+         TdpGis.Api GIS endpoints
 ```
 
-### 5. Run the Applications
+Bearer is **only** for Entra. Workspace tokens are **never** sent as Bearer.
 
-#### REST API
+---
 
-```bash
-dotnet run --project TdpGis.Api
+### TdpGis.Api — two layers
+
+#### Layer 1: Microsoft Entra ID (JWT Bearer)
+
+**What it is**
+
+- Header: `Authorization: Bearer <access_token>`
+- Validated by `AddMicrosoftIdentityWebApi` against the `AzureAd` config section
+- Checks issuer, signature, lifetime, and audience
+- Accepted audiences: `AzureAd:Audience`, raw `AzureAd:ClientId`, and `api://{ClientId}`
+
+**Authorization (app role)**
+
+- Named policy `TdpGisApiAccess` is applied to **all FastEndpoints** (not as `FallbackPolicy`, so Swagger stays anonymous)
+- Requires an authenticated user
+- Requires claim `roles` to contain `AzureAd:ApiAccessAppRole` (default **`TdpGisApi.Access`**)
+- Role matching is implemented in `EntraAppRoleClaims` (handles Entra `roles` claim types)
+
+**Who must have the role**
+
+| Caller style | How the role appears |
+|--------------|----------------------|
+| User (delegated) | User/group assigned `TdpGisApi.Access` on the API enterprise app |
+| App-only (client credentials) | Application permission / app role assigned to the **client** service principal |
+
+**Entra setup (API resource app)**
+
+1. App registration for **TdpGis.Api** → copy Application (client) ID into `AzureAd:ClientId`
+2. **Expose an API** → Application ID URI `api://<ClientId>` → `AzureAd:Audience`
+3. Optional delegated scope (e.g. `access_as_user`) for **user** tokens:  
+   `api://<ClientId>/access_as_user`
+4. **App roles** → value **`TdpGisApi.Access`** (Users/Groups and/or Applications)
+5. Assign the role to users/groups or to the calling app
+6. Caller app: API permission (delegated scope or application role) + admin consent
+
+**Getting a token**
+
+- **User (delegated):** authorize + token with scope  
+  `api://<ApiClientId>/access_as_user`  
+  (or your exposed scope name)
+- **App-only:** client credentials with scope  
+  `api://<ApiClientId>/.default`
+
+Decode at [jwt.ms](https://jwt.ms): `aud` must be this API; `roles` should include `TdpGisApi.Access`.
+
+**Typical HTTP results (Entra layer)**
+
+| Status | Meaning |
+|--------|---------|
+| 401 | Missing/invalid/expired Bearer, wrong audience, bad signature |
+| 403 | Authenticated but missing `TdpGisApi.Access` |
+
+#### Layer 2: Workspace access token
+
+**What it is**
+
+- Header: **`X-Access-Token`**
+- Opaque string created in **TdpGis.Endpoints** (Workspace & token UI)
+- Validated in `GisWorkspaceAccess.TryValidateAsync` against the app DB (workspace id, active, not expired)
+
+**Why it exists**
+
+Entra proves “this caller may use the API.” The workspace token proves “this caller may query **this** workspace’s entities.”
+
+**Typical HTTP results (workspace layer)**
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Missing `X-Access-Token` or invalid workspace id |
+| 401 | Token invalid, inactive, expired, or wrong workspace |
+| 404 | Entity not in workspace (phrase query) — auth already succeeded |
+
+#### GIS API routes (both headers required)
+
+```http
+GET /api/gis-workspace-entities/{workspaceId}
+Authorization: Bearer <entra-access-token>
+X-Access-Token: <workspace-token>
+
+# Phrase query (by configured QueryField) — one of the GIS query operations
+GET /api/gis-workspace/{workspaceId}/entity/{entityId}/search/{searchedPhrase}
+Authorization: Bearer <entra-access-token>
+X-Access-Token: <workspace-token>
 ```
 
-The API will start at `https://localhost:7000` (or the configured port).
+Responses use typed DTOs (`List<GisConnectionDto>`, `SearchGisEntityResponse`, errors as `ApiMessageResponse`).
 
-#### Admin UI
+Additional query types (for example **spatial search**) are expected to follow the same auth headers and workspace/entity routing, with their own routes and request shapes.
 
-```bash
-dotnet run --project TdpGis.Endpoints
+#### Pipeline order (`TdpGis.Api`)
+
+```text
+UseAuthentication()   → validate Entra JWT (or mock in tests)
+UseAuthorization()    → TdpGisApiAccess policy (role)
+FastEndpoints handler → GisWorkspaceAccess (X-Access-Token)
+                      → load entity config → GisDataService (list / query)
 ```
 
-The Admin UI will be available at the configured port (typically `https://localhost:7001` or `http://localhost:5000`).
+---
 
-## API Documentation
+### TdpGis.Endpoints — admin UI (separate Entra app)
 
-Once running, access the Swagger UI at:
-- **Swagger UI**: `https://localhost:7000/swagger`
-- **OpenAPI JSON**: `https://localhost:7000/swagger/v1/swagger.json`
+Admin uses **OpenID Connect cookie** sign-in (not the API JWT policy).
 
-## Authentication
+| Setting | Purpose |
+|---------|---------|
+| `AzureAd:ClientId` / `ClientSecret` | Web app registration |
+| `AzureAd:CallbackPath` | Usually `/signin-oidc` |
+| `AzureAd:AdminAppRole` | Default `Gis.Admin` — can manage configuration |
+| `AzureAd:ViewerAppRole` | Default `Gis.Viewer` — read-oriented access |
 
-### Two-Layer Authentication Model
+Create app roles **`Gis.Admin`** and **`Gis.Viewer`** on the **admin** app registration and assign users. This is independent of **`TdpGisApi.Access`** on the API app.
 
-1. **Microsoft Entra ID (Azure AD)**
-   - JWT Bearer tokens in `Authorization: Bearer <token>`
-   - Token must contain the `TdpGisApi.Access` app role
-   - Applied to FastEndpoints only (not blocking OpenAPI documentation)
+---
 
-2. **Workspace Access Token**
-   - Opaque token in `X-Access-Token` header
-   - Validated against the database
-   - Used for GIS endpoint access
+### Frontend / BFF callers (how tokens are used)
 
-### Environment Variable for Testing
+Two common patterns:
 
-For integration tests:
-```bash
-set IntegrationTests:UseMockJwt=true
-```
+1. **App-only to API** — BFF uses client credentials; sets Bearer from an app token. User login is for the site/session only. (This repo’s `_Frontend` prefers `gis_api_access_token` for upstream GIS calls.)
+2. **Delegated `access_as_user`** — user signs in with scope for the API; BFF forwards the user’s access token as Bearer. User must have `TdpGisApi.Access`.
 
-This allows the API to accept mock JWT tokens without Entra validation.
+In both cases the BFF (or client) still sends **`X-Access-Token`** for the workspace (from secure server config or admin-issued token).
 
-## Project Structure
+---
+
+### Testing auth (API integration tests)
+
+Production Entra validation is **not** used in `TdpGis.Api.Tests`. `TdpGisApiWebApplicationFactory` sets:
+
+| Setting | Effect |
+|---------|--------|
+| `IntegrationTests:UseMockJwt=true` | Replaces Entra with `IntegrationTestJwtAuthenticationHandler` (parse JWT claims only; no signature/lifetime/audience) |
+| `IntegrationTests:SkipApiAccessRole=true` | Policy requires authenticated user but skips `TdpGisApi.Access` |
+
+Tests still send `Authorization: Bearer` (fake token) and exercise **`X-Access-Token`** / workspace validation with mocked `IGisConfigurationService`.
+
+**Never** enable those flags in production configuration.
+
+---
+
+## GIS data sources and queries
+
+Data sources and entities are configured in the admin UI, stored in the app Postgres DB, and used at query time by `TdpGis.Api`.
+
+Supported source types: **MongoDB**, **PostgreSQL**, **SQL Server**.
+
+### Query operations
+
+Phrase search by `QueryField` is the query operation implemented today. More operations (such as **spatial search**) will be added using the same workspace/entity configuration and auth model.
+
+| Operation (current) | Route | Behavior |
+|---------------------|-------|----------|
+| List workspace entities | `GET /api/gis-workspace-entities/{workspaceId}` | Returns entity definitions (no source round-trip for row data) |
+| Phrase query | `GET .../entity/{entityId}/search/{searchedPhrase}` | Filters source rows where configured `QueryField` contains the phrase |
+
+**Phrase query by source type**
+
+| `SourceType` | Phrase filter |
+|--------------|---------------|
+| `Mongodb` | Case-insensitive regex on `QueryField` |
+| `Postgres` | `ILIKE` on `QueryField`; mapped columns projected (geometry as text) |
+| `SqlServer` | `LIKE` on `QueryField`; mapped columns projected |
+
+Phrase queries project configured **property mappings** (no per-request schema probe).
+
+---
+
+## Project structure (API-focused)
 
 ```
 TdpGis.Api/
-├── Authentication/        # Auth handlers and policies
-├── GisQuery/             # GIS query endpoints and helpers
-├── Security/             # Security configurations
-├── Program.cs            # Application entry point
-└── appsettings*.json     # Configuration files
-
-TdpGis.Application/
-├── Abstractions/         # Interfaces and contracts
-├── AppModels/           # Application data transfer objects
-├── Services/            # Business logic services
-└── Common/              # Common utilities
+├── Authentication/          # EntraAppRoleClaims, IntegrationTestJwtAuthenticationHandler
+├── GisQuery/
+│   ├── Endpoints/           # List entities, phrase query (more query types later)
+│   ├── Helpers/             # GisWorkspaceAccess (X-Access-Token)
+│   └── Messages/            # Requests/responses (typed DTOs)
+└── Program.cs               # Auth pipeline, policies, Swagger schemes
 
 TdpGis.Infrastructure/
-├── Configurations/      # EF Core model configurations
-├── Mongo/               # MongoDB integration
-├── Persistence/         # Data access patterns
-└── Migrations/          # EF Core migrations
-
-TdpGis.Domain/
-└── GisEntities.cs       # Core domain models
+├── GisDataService.cs        # Routes Mongo vs SQL data access
+├── Mongo/                   # Mongo query/metadata
+├── Sql/                     # Postgres/SQL Server query + metadata probes
+└── Persistence/             # EF app DB
 ```
 
 ## Development
 
-### Running Tests
+### Tests
+
+This repo uses **Microsoft.Testing.Platform** (see `global.json`). From `_Backend`:
 
 ```bash
-# Run all tests
-dotnet test
-
-# Run specific test project
-dotnet test tests/TdpGis.Api.Tests
-dotnet test tests/TdpGis.Application.Tests
-dotnet test tests/TdpGis.Infrastructure.Tests
+dotnet test --project tests/TdpGis.Api.Tests/TdpGis.Api.Tests.csproj
+dotnet test --project tests/TdpGis.Infrastructure.Tests/TdpGis.Infrastructure.Tests.csproj
+dotnet test --project tests/TdpGis.Application.Tests/TdpGis.Application.Tests.csproj
 ```
 
-### Building
+### Build / Docker
 
 ```bash
-# Debug build
 dotnet build
-
-# Release build
 dotnet publish -c Release -o ./publish
-```
 
-### Docker
-
-Build a Docker image:
-
-```bash
 docker build -f TdpGis.Api/Dockerfile -t tdp-gis-api:latest .
-```
-
-Run the container:
-
-```bash
-docker run -p 7000:80 \
-  -e AzureAd:TenantId=<tenant-id> \
-  -e AzureAd:ClientId=<client-id> \
-  -e ConnectionStrings:Database=<connection-string> \
+docker run -p 8080:8080 \
+  -e AzureAd__TenantId=<tenant-id> \
+  -e AzureAd__ClientId=<client-id> \
+  -e AzureAd__Audience=api://<client-id> \
+  -e ConnectionStrings__Database=<postgres-connection-string> \
   tdp-gis-api:latest
 ```
 
-## Health Checks
-
-Health check endpoints are available at:
-- `/health` - General health status
-- `/health/db` - Database connectivity check
-
-## Key Features
-
-- ✅ Enterprise authentication with Azure AD integration
-- ✅ RESTful API with FastEndpoints
-- ✅ Comprehensive Swagger/OpenAPI documentation
-- ✅ Multi-database support (SQL Server, MongoDB)
-- ✅ Layered architecture for scalability
-- ✅ Built-in health checks
-- ✅ CORS support for frontend integration
-- ✅ Reverse proxy support (X-Forwarded headers)
-- ✅ Unit and integration testing
-- ✅ Docker containerization
-
-## Configuration
-
-### Connection Strings
-
-Update `appsettings.json` or use User Secrets:
-
-```bash
-dotnet user-secrets set "ConnectionStrings:Database" "your-connection-string"
-```
-
-### Azure AD Setup
-
-1. Register an application in Azure AD
-2. Configure API permissions for the application
-3. Create an app role (e.g., `TdpGisApi.Access`)
-4. Update `appsettings.json` with your credentials
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## Troubleshooting
 
-### Database Connection Issues
+### Entra / API 401
 
-- Verify connection string in `appsettings.json`
-- Ensure database server is running and accessible
-- Check firewall rules for database port access
+- Token expired (`IDX10223`) — get a new access token
+- Wrong audience — use an **access token for this API**, not an ID token or Graph token; confirm `aud` on jwt.ms
+- Missing Bearer header
 
-### Authentication Failures
+### Entra / API 403
 
-- Verify Azure AD tenant and client IDs
-- Ensure token contains required app roles
-- Check token expiration
+- User or app not assigned role **`TdpGisApi.Access`**
+- Role **Value** in Entra must match `AzureAd:ApiAccessAppRole` exactly
 
-### CORS Issues
+### Workspace 400 / 401
 
-- Configure allowed origins in `AddCors` in `Program.cs`
-- Verify request headers are allowed
+- Missing `X-Access-Token`
+- Token revoked, expired, or for a different workspace
 
-## Support
+### GIS query errors
 
-For issues and questions:
-1. Check existing GitHub issues
-2. Review API documentation in Swagger UI
-3. Contact the development team
+- Postgres geometry mapped without text projection — phrase queries project Postgres columns as `::text` for reader compatibility
+- Ensure property mappings and `QueryField` match the source table/collection for phrase queries
 
-## License
+### Database
 
-[Add your license information here]
+- App DB must be reachable PostgreSQL (`ConnectionStrings:Database`)
+- Run EF migrations against that database
 
-## Additional Resources
+## Additional resources
 
-- [FastEndpoints Documentation](https://fast-endpoints.com/)
-- [Entity Framework Core Documentation](https://learn.microsoft.com/ef/core/)
-- [Microsoft Entra ID Documentation](https://learn.microsoft.com/entra/identity/)
-- [OpenAPI Specification](https://swagger.io/specification/)
+- [Microsoft Entra ID](https://learn.microsoft.com/entra/identity/)
+- [Microsoft identity platform access tokens](https://learn.microsoft.com/entra/identity-platform/access-tokens)
+- [FastEndpoints](https://fast-endpoints.com/)
+- [EF Core](https://learn.microsoft.com/ef/core/)
+- [dotnet test + Microsoft.Testing.Platform](https://learn.microsoft.com/dotnet/core/testing/unit-testing-with-dotnet-test)

@@ -15,9 +15,9 @@ public sealed class SearchGisEntityEndpoint(IGisConfigurationService configurati
         AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
         Summary(s =>
         {
-            s.Summary = "Returns GIS collection for a given entity satisfying searchable phrase.";
+            s.Summary = "Phrase query: returns mapped GIS rows for an entity where QueryField matches the search phrase.";
             s.Description =
-                $"Path: `workspaceId`, `entityId`, `searchedPhrase`. Send `Authorization: Bearer` (Entra) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
+                $"Path: `workspaceId`, `entityId`, `searchedPhrase`. One of the GIS query operations (others such as spatial search may be added later). Send `Authorization: Bearer` (Entra) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
         });
     }
 

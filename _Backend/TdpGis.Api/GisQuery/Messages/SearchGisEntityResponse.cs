@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 
 namespace TdpGis.Api.GisQuery.Messages;
 
-/// <summary>Successful GIS entity search payload.</summary>
+/// <summary>Successful payload for a GIS entity phrase query (by configured QueryField).</summary>
 public sealed class SearchGisEntityResponse
 {
     public required string SearchedPhrase { get; init; }
