@@ -103,20 +103,14 @@ else
 var apiAccessAppRole = builder.Configuration["AzureAd:ApiAccessAppRole"] ?? "TdpGisApi.Access";
 var skipApiAccessRoleCheck = builder.Configuration.GetValue("IntegrationTests:SkipApiAccessRole", false);
 const string tdpGisApiAccessPolicy = "TdpGisApiAccess";
-builder.Services.AddAuthorization(options =>
-{
-    // Named policy only — do not use FallbackPolicy: NSwag Swagger UI and /swagger/v1/swagger.json are not
-    // FastEndpoints and cannot opt out of a fallback policy, so Swagger would always return 401.
-    options.AddPolicy(
-        tdpGisApiAccessPolicy,
-        policy =>
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(tdpGisApiAccessPolicy, policy =>
         {
             policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
             policy.RequireAuthenticatedUser();
             if (!skipApiAccessRoleCheck)
                 policy.RequireAssertion(ctx => EntraAppRoleClaims.HasRole(ctx.User, apiAccessAppRole));
         });
-});
 
 // Swagger: document both schemes — Entra (Bearer) for API auth, X-Access-Token for workspace GIS calls.
 // EnableJWTBearerAuth = false avoids duplicate generic JWT entries; we register "Entra" explicitly below.

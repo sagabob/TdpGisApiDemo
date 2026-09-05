@@ -22,23 +22,11 @@ public static class EntraAppRoleClaims
         if (user?.Identity?.IsAuthenticated != true || string.IsNullOrEmpty(roleValue))
             return false;
 
-        foreach (var claim in user.Claims)
-        {
-            if (!IsRoleClaimType(claim.Type))
-                continue;
-            if (string.Equals(claim.Value, roleValue, StringComparison.Ordinal))
-                return true;
-        }
-
-        return false;
+        return user.Claims.Where(claim => IsRoleClaimType(claim.Type)).Any(claim => string.Equals(claim.Value, roleValue, StringComparison.Ordinal));
     }
 
     private static bool IsRoleClaimType(string type)
     {
-        foreach (var t in RoleClaimTypes)
-            if (type == t)
-                return true;
-
-        return false;
+        return RoleClaimTypes.Any(t => type == t);
     }
 }

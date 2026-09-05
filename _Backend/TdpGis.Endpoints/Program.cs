@@ -59,16 +59,13 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
 
 var adminAppRole = builder.Configuration["AzureAd:AdminAppRole"] ?? "Gis.Admin";
 var viewerAppRole = builder.Configuration["AzureAd:ViewerAppRole"] ?? "Gis.Viewer";
-builder.Services.AddAuthorization(options =>
-{
-    // Do not use RequireRole alone: Entra app roles use the "roles" claim; RoleClaimType on the identity may not match.
-    options.AddPolicy("GisPortalAccess", policy =>
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("GisPortalAccess", policy =>
         policy.RequireAssertion(ctx =>
             EntraAppRoleClaims.HasRole(ctx.User, adminAppRole) ||
-            EntraAppRoleClaims.HasRole(ctx.User, viewerAppRole)));
-    options.AddPolicy("GisConfigurationAdmin", policy =>
+            EntraAppRoleClaims.HasRole(ctx.User, viewerAppRole)))
+    .AddPolicy("GisConfigurationAdmin", policy =>
         policy.RequireAssertion(ctx => EntraAppRoleClaims.HasRole(ctx.User, adminAppRole)));
-});
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"])
