@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
+using TdpGis.Api.GisQuery.Messages;
 using TdpGis.Api.Tests.Support;
 using TdpGis.Application.Abstractions;
 using TdpGis.Domain;
@@ -74,10 +75,10 @@ public class SearchGisEntityEndpointTests
             TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(
+        var body = await response.Content.ReadFromJsonAsync<ApiMessageResponse>(
             TestContext.Current.CancellationToken);
         body.Should().NotBeNull();
-        body!["message"].Should().Be("Requested entity is not in the provided workspace.");
+        body!.Message.Should().Be("Requested entity is not in the provided workspace.");
     }
 
     [Fact]
@@ -156,12 +157,13 @@ public class SearchGisEntityEndpointTests
             TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<JsonObject>(TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<SearchGisEntityResponse>(
+            TestContext.Current.CancellationToken);
         body.Should().NotBeNull();
-        body!["searchedPhrase"]!.GetValue<string>().Should().Be(searchedPhrase);
-        body["entityId"]!.GetValue<Guid>().Should().Be(entityId);
-        body["collections"]!.AsArray().Should().HaveCount(1);
-        body["collections"]![0]!["placeName"]!.GetValue<string>().Should().Be("Botanic Garden");
+        body!.SearchedPhrase.Should().Be(searchedPhrase);
+        body.EntityId.Should().Be(entityId);
+        body.Collections.Should().HaveCount(1);
+        body.Collections[0]["placeName"]!.GetValue<string>().Should().Be("Botanic Garden");
 
         repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
             Times.Once);

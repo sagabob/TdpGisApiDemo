@@ -27,4 +27,27 @@ public class GisQueryMessageContractsTests
         request.EntityId.Should().Be(entityId);
         request.SearchedPhrase.Should().Be(searchedPhrase);
     }
+
+    [Fact]
+    public void SearchGisEntityResponse_holds_search_payload()
+    {
+        var entityId = Guid.NewGuid();
+        var response = new SearchGisEntityResponse
+        {
+            SearchedPhrase = "garden",
+            EntityId = entityId,
+            Collections = []
+        };
+
+        response.SearchedPhrase.Should().Be("garden");
+        response.EntityId.Should().Be(entityId);
+        response.Collections.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ApiMessageResponse_holds_message()
+    {
+        var response = new ApiMessageResponse { Message = "missing" };
+        response.Message.Should().Be("missing");
+    }
 }

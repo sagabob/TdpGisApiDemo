@@ -6,8 +6,8 @@ using TdpGis.Application.Abstractions;
 
 namespace TdpGis.Api.GisQuery.Endpoints;
 
-public class SearchGisEntityEndpoint(IGisConfigurationService repository, IGisDataService dataService)
-    : Endpoint<SearchGisEntityRequest>
+public sealed class SearchGisEntityEndpoint(IGisConfigurationService configurationService, IGisDataService dataService)
+    : Endpoint<SearchGisEntityRequest, SearchGisEntityResponse>
 {
     public override void Configure()
     {
@@ -24,29 +24,39 @@ public class SearchGisEntityEndpoint(IGisConfigurationService repository, IGisDa
     public override async Task HandleAsync(SearchGisEntityRequest req, CancellationToken ct)
     {
         var accessError =
-            await GisWorkspaceAccess.TryValidateAsync(repository, req.WorkspaceId, HttpContext.Request, ct);
+            await GisWorkspaceAccess.TryValidateAsync(configurationService, req.WorkspaceId, HttpContext.Request, ct);
         if (accessError is { } err)
         {
-            await HttpContext.Response.SendAsync(new { message = err.Message }, err.StatusCode, cancellation: ct);
+            await SendErrorAsync(err.Message, err.StatusCode, ct);
             return;
         }
 
-        var selectedEntity = await repository.GetGisConnectionDtoByEntityId(req.WorkspaceId, req.EntityId);
+        var selectedEntity =
+            await configurationService.GetGisConnectionDtoByEntityId(req.WorkspaceId, req.EntityId);
 
-        if (selectedEntity != null)
+        if (selectedEntity is null)
         {
-            var result = await dataService.GetSearchedInstances(selectedEntity, req.SearchedPhrase, 10, ct);
+            await SendErrorAsync(
+                "Requested entity is not in the provided workspace.",
+                StatusCodes.Status404NotFound,
+                ct);
+            return;
+        }
 
-            await HttpContext.Response.SendAsync(
-                new { req.SearchedPhrase, entityId = req.EntityId, collections = result },
-                cancellation: ct);
-        }
-        else
-        {
-            await HttpContext.Response.SendAsync(
-                new { message = "Requested entity is not in the provided workspace." },
-                404,
-                cancellation: ct);
-        }
+        var result = await dataService.GetSearchedInstances(selectedEntity, req.SearchedPhrase, 10, ct);
+        await Send.OkAsync(
+            new SearchGisEntityResponse
+            {
+                SearchedPhrase = req.SearchedPhrase,
+                EntityId = req.EntityId,
+                Collections = result
+            },
+            ct);
+    }
+
+    private Task SendErrorAsync(string message, int statusCode, CancellationToken ct)
+    {
+        return HttpContext.Response.SendAsync(new ApiMessageResponse { Message = message }, statusCode,
+            cancellation: ct);
     }
 }
