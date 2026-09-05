@@ -30,7 +30,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IGisMongoQueryRepository, GisMongoQueryRepository>();
         services.AddScoped<IMongoMetadataProvider, MongoMetadataProvider>();
         services.AddScoped<ISqlMetadataProvider, SqlMetadataProvider>();
-        services.AddScoped<IGisDataService, GisMongoDataService>();
+        services.AddScoped<IGisSqlQueryRepository, GisSqlQueryRepository>();
+        services.AddScoped<GisMongoDataService>();
+        services.AddScoped<GisSqlDataService>();
+        services.AddScoped<IGisDataService, GisDataService>();
 
         return services;
     }

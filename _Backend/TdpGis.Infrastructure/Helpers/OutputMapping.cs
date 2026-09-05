@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 using MongoDB.Bson;
 using TdpGis.Domain;
 
@@ -33,6 +34,98 @@ public static class OutputMapping
         }
 
         return jo;
+    }
+
+    public static JsonObject ConvertFromRow(IReadOnlyDictionary<string, object?> row, List<PropertyMapping> maps)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        ArgumentNullException.ThrowIfNull(maps);
+
+        var jo = new JsonObject();
+        foreach (var prop in maps)
+        {
+            if (string.IsNullOrEmpty(prop.PropertyName))
+                continue;
+
+            if (!TryGetRowValue(row, prop.PropertyName, out var value))
+                continue;
+
+            switch (prop.ColumnType)
+            {
+                case PropertyType.Normal:
+                    jo[prop.PropertyLabel] = value is null ? JsonNull() : JsonValue.Create(Convert.ToString(value))!;
+                    break;
+
+                case PropertyType.Object:
+                    jo[prop.PropertyLabel] = value is null ? JsonNull() : ObjectValueToJsonNode(value);
+                    break;
+            }
+        }
+
+        return jo;
+    }
+
+    private static bool TryGetRowValue(
+        IReadOnlyDictionary<string, object?> row,
+        string propertyName,
+        out object? value)
+    {
+        if (row.TryGetValue(propertyName, out value))
+            return true;
+
+        foreach (var (key, candidate) in row)
+        {
+            if (!string.Equals(key, propertyName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            value = candidate;
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static JsonNode ObjectValueToJsonNode(object value)
+    {
+        if (value is JsonNode node)
+            return node.DeepClone();
+
+        if (value is string s)
+        {
+            var trimmed = s.Trim();
+            if ((trimmed.StartsWith('{') && trimmed.EndsWith('}')) ||
+                (trimmed.StartsWith('[') && trimmed.EndsWith(']')))
+            {
+                try
+                {
+                    return JsonNode.Parse(trimmed) ?? JsonValue.Create(s)!;
+                }
+                catch (JsonException)
+                {
+                    return JsonValue.Create(s)!;
+                }
+            }
+
+            return JsonValue.Create(s)!;
+        }
+
+        if (value is bool or byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal)
+            return JsonValue.Create(value)!;
+
+        if (value is DateTime dt)
+            return JsonValue.Create(DateTime.SpecifyKind(dt, DateTimeKind.Utc))!;
+
+        if (value is DateTimeOffset dto)
+            return JsonValue.Create(dto.UtcDateTime)!;
+
+        if (value is Guid guid)
+            return JsonValue.Create(guid.ToString())!;
+
+        if (value is byte[] bytes)
+            return JsonValue.Create(Convert.ToBase64String(bytes))!;
+
+        return JsonValue.Create(Convert.ToString(value))!;
     }
 
     /// <summary>

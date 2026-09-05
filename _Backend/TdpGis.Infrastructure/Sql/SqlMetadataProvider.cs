@@ -53,7 +53,7 @@ public sealed class SqlMetadataProvider(PostgresDataSourceCache postgresDataSour
         if (!databaseType.IsRelational())
             throw new ArgumentOutOfRangeException(nameof(databaseType), databaseType, null);
 
-        var (schema, name) = SplitTableName(tableName, databaseType);
+        var (schema, name) = SqlIdentifiers.SplitTableName(tableName, databaseType);
         await using var connection = CreateConnection(databaseType, connectionString);
         await connection.OpenAsync(cancellationToken);
 
@@ -94,13 +94,13 @@ public sealed class SqlMetadataProvider(PostgresDataSourceCache postgresDataSour
             name,
             cancellationToken);
 
-        var from = $"{QuoteSqlServer(schema)}.{QuoteSqlServer(name)}";
+        var from = $"{SqlIdentifiers.QuoteSqlServer(schema)}.{SqlIdentifiers.QuoteSqlServer(name)}";
         if (columns.Count == 0)
             return $"SELECT TOP 1 * FROM {from}";
 
         var selectList = string.Join(", ", columns.Select(c =>
         {
-            var quoted = QuoteSqlServer(c.Name);
+            var quoted = SqlIdentifiers.QuoteSqlServer(c.Name);
             return c.TypeName.ToLowerInvariant() switch
             {
                 "geometry" or "geography" => $"CONVERT(nvarchar(max), {quoted}.STAsText()) AS {quoted}",
@@ -134,13 +134,13 @@ public sealed class SqlMetadataProvider(PostgresDataSourceCache postgresDataSour
             name,
             cancellationToken);
 
-        var from = $"{QuotePostgres(schema)}.{QuotePostgres(name)}";
+        var from = $"{SqlIdentifiers.QuotePostgres(schema)}.{SqlIdentifiers.QuotePostgres(name)}";
         if (columns.Count == 0)
             return $"SELECT * FROM {from} LIMIT 1";
 
         var selectList = string.Join(", ", columns.Select(c =>
         {
-            var quoted = QuotePostgres(c.Name);
+            var quoted = SqlIdentifiers.QuotePostgres(c.Name);
             return c.TypeName.ToLowerInvariant() switch
             {
                 "geometry" or "geography" => $"ST_AsText({quoted}) AS {quoted}",
@@ -284,21 +284,4 @@ public sealed class SqlMetadataProvider(PostgresDataSourceCache postgresDataSour
         parameter.Value = value;
         command.Parameters.Add(parameter);
     }
-
-    private static (string Schema, string Name) SplitTableName(string tableName, SourceType databaseType)
-    {
-        var trimmed = tableName.Trim().Trim('[', ']');
-        var dot = trimmed.IndexOf('.');
-        if (dot <= 0 || dot == trimmed.Length - 1)
-        {
-            var defaultSchema = databaseType == SourceType.SqlServer ? "dbo" : "public";
-            return (defaultSchema, trimmed);
-        }
-
-        return (trimmed[..dot].Trim('[', ']'), trimmed[(dot + 1)..].Trim('[', ']'));
-    }
-
-    private static string QuotePostgres(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
-
-    private static string QuoteSqlServer(string identifier) => $"[{identifier.Replace("]", "]]")}]";
 }

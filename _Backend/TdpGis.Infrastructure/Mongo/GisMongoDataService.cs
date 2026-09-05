@@ -1,6 +1,5 @@
 ﻿using System.Text.Json.Nodes;
 using TdpGis.AdminApplication.Abstractions;
-using TdpGis.Application.Abstractions;
 using TdpGis.Domain;
 using TdpGis.Infrastructure.Helpers;
 
@@ -9,10 +8,12 @@ namespace TdpGis.Infrastructure.Mongo;
 public class GisMongoDataService(
     IMongoMetadataProvider mongoMetadataProvider,
     IGisMongoQueryRepository mongoQueryRepository)
-    : IGisDataService
 {
-    public async Task<List<JsonObject>> GetSearchedInstances(GisConnection gisConnection, string searchText,
-        int maxResults, CancellationToken cancellationToken = default)
+    public async Task<List<JsonObject>> GetSearchedInstances(
+        GisConnection gisConnection,
+        string searchText,
+        int maxResults,
+        CancellationToken cancellationToken = default)
     {
         var connectionString = gisConnection.DataSource.ConnectionString.Trim();
         var resolvedDatabaseName = mongoMetadataProvider.GetDatabaseName(connectionString);
