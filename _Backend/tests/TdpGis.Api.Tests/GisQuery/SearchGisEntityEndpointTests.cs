@@ -37,7 +37,7 @@ public class SearchGisEntityEndpointTests
     }
 
     [Fact]
-    public async Task Get_returns_401_when_entity_is_not_in_workspace()
+    public async Task Get_returns_404_when_entity_is_not_in_workspace()
     {
         var workspaceId = Guid.NewGuid();
         var entityId = Guid.NewGuid();
@@ -73,7 +73,7 @@ public class SearchGisEntityEndpointTests
             $"/api/gis-workspace/{workspaceId}/entity/{entityId}/search/garden",
             TestContext.Current.CancellationToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var body = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(
             TestContext.Current.CancellationToken);
         body.Should().NotBeNull();

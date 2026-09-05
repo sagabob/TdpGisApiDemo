@@ -45,7 +45,7 @@ public class SearchGisEntityEndpoint(IGisConfigurationService repository, IGisDa
         {
             await HttpContext.Response.SendAsync(
                 new { message = "Requested entity is not in the provided workspace." },
-                401,
+                404,
                 cancellation: ct);
         }
     }
