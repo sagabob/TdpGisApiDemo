@@ -1,0 +1,29 @@
+---
+description: Clean Architecture for TdpGis backend APIs (Endpoint → UseCase → Ports → Adapters)
+globs: _Backend/**/*.cs
+alwaysApply: false
+---
+
+# TdpGis backend Clean Architecture
+
+Follow **Endpoint → UseCase → Ports → Adapters** for GIS API features.
+
+## Layers
+
+| Project | Owns |
+|---------|------|
+| `TdpGis.Api` | FastEndpoints, Entra policy, HTTP status mapping (`GisQueryHttp`) |
+| `TdpGis.Application` | `UseCases/`, `Abstractions/` ports, `Common/` (e.g. `WorkspaceAccessGuard`, `GisQueryFailureKind`) |
+| `TdpGis.Infrastructure` | EF/Mongo/SQL adapters; register ports **and** use cases in `AddInfrastructure` |
+| `TdpGis.Domain` | Entities only |
+
+## Rules
+
+- New GIS operations: add a use case under `TdpGis.Application/UseCases/{Name}/`; keep endpoints thin.
+- Application returns `GisQueryFailureKind` (or similar) — **never** raw `400`/`401`/`404` in Application.
+- Map failures to HTTP only in Api (`GisQueryHttp.StatusCode`).
+- Shared workspace token checks: `WorkspaceAccessGuard`, not copy-paste in endpoints.
+- `GisWorkspaceAccess` only resolves `X-Access-Token` from the request.
+- List APIs: DTOs without connection strings; query ops: `GetGisConnectionForQueryAsync`.
+- Register new use cases in `InfrastructureServiceCollectionExtensions`.
+- Prefer staged refactors with tests after each stage.

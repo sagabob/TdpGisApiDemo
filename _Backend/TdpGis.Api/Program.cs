@@ -7,9 +7,9 @@
 //      the Entra app role in AzureAd:ApiAccessAppRole (default TdpGisApi.Access) on the
 //      token's "roles" claim, plus a named auth policy applied to FastEndpoints only (not FallbackPolicy,
 //      which would block NSwag /swagger and OpenAPI JSON).
-//   2) Workspace access — opaque token in "X-Access-Token" only. Not validated
-//      in this file; GIS endpoints use GisWorkspaceAccess.TryValidateAsync
-//      against the database. Bearer is reserved for Entra, never for workspace.
+//   2) Workspace access — opaque token in "X-Access-Token" only. Resolved in GisWorkspaceAccess,
+//      validated in Application use cases (WorkspaceAccessGuard) against the database.
+//      Bearer is reserved for Entra, never for workspace.
 //
 // Config: AzureAd section (TenantId, ClientId, Audience, etc.) — see appsettings.
 // IntegrationTests:UseMockJwt — when true, Bearer is handled by IntegrationTestJwtAuthenticationHandler

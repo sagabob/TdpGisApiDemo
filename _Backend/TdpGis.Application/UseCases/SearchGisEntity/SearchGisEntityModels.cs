@@ -1,0 +1,43 @@
+using System.Text.Json.Nodes;
+using TdpGis.Application.Common;
+
+namespace TdpGis.Application.UseCases.SearchGisEntity;
+
+public sealed class SearchGisEntityQuery
+{
+    public required Guid WorkspaceId { get; init; }
+    public required Guid EntityId { get; init; }
+    public required string SearchedPhrase { get; init; }
+    public required string? WorkspaceAccessToken { get; init; }
+    public int MaxResults { get; init; } = 10;
+}
+
+public sealed class SearchGisEntityResult
+{
+    public bool Succeeded { get; private init; }
+    public GisQueryFailureKind? FailureKind { get; private init; }
+    public string? ErrorMessage { get; private init; }
+    public string? SearchedPhrase { get; private init; }
+    public Guid EntityId { get; private init; }
+    public List<JsonObject>? Collections { get; private init; }
+
+    public static SearchGisEntityResult Success(
+        string searchedPhrase,
+        Guid entityId,
+        List<JsonObject> collections) =>
+        new()
+        {
+            Succeeded = true,
+            SearchedPhrase = searchedPhrase,
+            EntityId = entityId,
+            Collections = collections
+        };
+
+    public static SearchGisEntityResult Failure(GisQueryFailureKind kind) =>
+        new()
+        {
+            Succeeded = false,
+            FailureKind = kind,
+            ErrorMessage = GisQueryFailureMessages.For(kind)
+        };
+}

@@ -59,7 +59,7 @@ public class SearchGisEntityEndpointTests
                 GisWorkspace = new GisWorkspace { Id = workspaceId, Name = "ws" }
             });
         repository
-            .Setup(r => r.GetGisConnectionDtoByEntityId(workspaceId, entityId))
+            .Setup(r => r.GetGisConnectionForQueryAsync(workspaceId, entityId))
             .ReturnsAsync((GisConnection?)null);
 
         var dataService = new Mock<IGisDataService>(MockBehavior.Strict);
@@ -132,7 +132,7 @@ public class SearchGisEntityEndpointTests
                 GisWorkspace = new GisWorkspace { Id = workspaceId, Name = "ws" }
             });
         repository
-            .Setup(r => r.GetGisConnectionDtoByEntityId(workspaceId, entityId))
+            .Setup(r => r.GetGisConnectionForQueryAsync(workspaceId, entityId))
             .ReturnsAsync(selectedEntity);
 
         var dataService = new Mock<IGisDataService>(MockBehavior.Strict);
@@ -167,7 +167,7 @@ public class SearchGisEntityEndpointTests
 
         repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
             Times.Once);
-        repository.Verify(r => r.GetGisConnectionDtoByEntityId(workspaceId, entityId), Times.Once);
+        repository.Verify(r => r.GetGisConnectionForQueryAsync(workspaceId, entityId), Times.Once);
         dataService.Verify(
             d => d.GetSearchedInstances(selectedEntity, searchedPhrase, 10, It.IsAny<CancellationToken>()),
             Times.Once);

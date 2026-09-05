@@ -8,7 +8,7 @@ namespace TdpGis.Infrastructure.Tests.Persistence;
 public class GisConfigurationServiceQueryTests
 {
     [Fact]
-    public async Task GetGisConnectionDtoByWorkspaceId_ShouldReturnSortedDtos_ForWorkspace()
+    public async Task GetGisConnectionDtosByWorkspaceIdAsync_ShouldReturnSortedDtos_ForWorkspace()
     {
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
         var workspace = new GisWorkspace { Id = Guid.NewGuid(), Name = "ws" };
@@ -60,7 +60,9 @@ public class GisConfigurationServiceQueryTests
         await fixture.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new GisConfigurationService(fixture.DbContext);
-        var result = sut.GetGisConnectionDtoByWorkspaceId(workspace.Id);
+        var result = await sut.GetGisConnectionDtosByWorkspaceIdAsync(
+            workspace.Id,
+            TestContext.Current.CancellationToken);
 
         result.Select(x => x.Name).Should().ContainInOrder("Alpha", "Zoo");
         result.Should().OnlyContain(x => x.PropertyMappings.Count == 1);

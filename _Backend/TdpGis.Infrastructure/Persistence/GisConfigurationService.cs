@@ -7,9 +7,11 @@ namespace TdpGis.Infrastructure.Persistence;
 
 public class GisConfigurationService(GisAppDbContext dbContext) : IGisConfigurationService
 {
-    public List<GisConnectionDto> GetGisConnectionDtoByWorkspaceId(Guid workspaceId)
+    public async Task<List<GisConnectionDto>> GetGisConnectionDtosByWorkspaceIdAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
     {
-        return dbContext.GisConnections
+        return await dbContext.GisConnections
             .AsNoTracking()
             .Include(x => x.PropertyMappings)
             .Where(x => x.GisWorkspaceId == workspaceId)
@@ -25,10 +27,10 @@ public class GisConfigurationService(GisAppDbContext dbContext) : IGisConfigurat
                 EntityLabel = x.EntityLabel,
                 Description = x.Description
             })
-            .ToList();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<GisConnection?> GetGisConnectionDtoByEntityId(Guid workspaceId, Guid entityId)
+    public async Task<GisConnection?> GetGisConnectionForQueryAsync(Guid workspaceId, Guid entityId)
     {
         return await dbContext.GisConnections
             .AsNoTracking()
@@ -37,7 +39,6 @@ public class GisConfigurationService(GisAppDbContext dbContext) : IGisConfigurat
             .Where(x => x.GisWorkspaceId == workspaceId && x.Id == entityId)
             .FirstOrDefaultAsync();
     }
-
 
     public async Task<bool> HasEntityAsync(Guid workspaceId, Guid entityId)
     {

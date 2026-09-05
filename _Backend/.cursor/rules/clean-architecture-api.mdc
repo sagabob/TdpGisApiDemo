@@ -1,0 +1,25 @@
+---
+description: Clean Architecture conventions when editing TdpGis.Api / Application / Infrastructure
+globs: "**/{TdpGis.Api,TdpGis.Application,TdpGis.Infrastructure}/**/*.cs"
+alwaysApply: false
+---
+
+# TdpGis.Api Clean Architecture
+
+```text
+Endpoint → UseCase → Ports → Infrastructure adapters
+```
+
+## Do
+
+- Put orchestration in `TdpGis.Application/UseCases/...`
+- Fail with `GisQueryFailureKind` + messages helper
+- Map HTTP in `TdpGis.Api` via `GisQueryHttp`
+- Validate workspace tokens in `WorkspaceAccessGuard`
+- Keep FastEndpoints as HTTP adapters only
+
+## Don't
+
+- Put `400`/`401`/`404` literals in Application use cases
+- Call `IGisConfigurationService` / `IGisDataService` business sequences from endpoints (call the use case)
+- Reintroduce `GisWorkspaceAccess.TryValidateAsync` business logic in Api

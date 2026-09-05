@@ -1,4 +1,4 @@
-using TdpGis.Application.Abstractions;
+using TdpGis.Application.Common;
 
 namespace TdpGis.Api.GisQuery.Helpers;
 
@@ -8,31 +8,7 @@ namespace TdpGis.Api.GisQuery.Helpers;
 /// </summary>
 public static class GisWorkspaceAccess
 {
-    public const string AccessTokenHeader = "X-Access-Token";
-
-    /// <summary>
-    ///     Returns null when the workspace id and workspace access token are valid; otherwise the client error to send.
-    /// </summary>
-    public static async Task<(string Message, int StatusCode)?> TryValidateAsync(
-        IGisConfigurationService repository,
-        Guid workspaceId,
-        HttpRequest request,
-        CancellationToken ct)
-    {
-        if (workspaceId == Guid.Empty)
-            return ("A valid workspace id is required.", 400);
-
-        var accessToken = ResolveAccessToken(request);
-        if (string.IsNullOrWhiteSpace(accessToken))
-            return (
-                $"Provide header '{AccessTokenHeader}' with the workspace access token (Entra token must be sent as Authorization: Bearer separately).",
-                400);
-
-        var validToken = await repository.GetValidWorkspaceAccessTokenAsync(workspaceId, accessToken, ct);
-        if (validToken is null) return ("Invalid workspace, access token, or token is inactive or expired.", 401);
-
-        return null;
-    }
+    public const string AccessTokenHeader = GisQueryFailureMessages.AccessTokenHeaderName;
 
     /// <summary>
     ///     Returns the workspace-scoped access token from <see cref="AccessTokenHeader" /> only.

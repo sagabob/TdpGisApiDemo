@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Application.Abstractions;
+using TdpGis.Application.UseCases.GetGisWorkspaceEntities;
+using TdpGis.Application.UseCases.SearchGisEntity;
 using TdpGis.Infrastructure.Mongo;
 using TdpGis.Infrastructure.Persistence;
 using TdpGis.Infrastructure.Sql;
@@ -34,6 +36,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<GisMongoDataService>();
         services.AddScoped<GisSqlDataService>();
         services.AddScoped<IGisDataService, GisDataService>();
+
+        // Application use cases (depend only on Application ports)
+        services.AddScoped<ISearchGisEntityUseCase, SearchGisEntityUseCase>();
+        services.AddScoped<IGetGisWorkspaceEntitiesUseCase, GetGisWorkspaceEntitiesUseCase>();
 
         return services;
     }

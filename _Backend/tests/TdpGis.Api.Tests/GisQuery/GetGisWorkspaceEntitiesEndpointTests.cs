@@ -70,8 +70,8 @@ public class GetGisWorkspaceEntitiesEndpointTests
                 GisWorkspace = new GisWorkspace { Id = workspaceId, Name = "ws" }
             });
         repository
-            .Setup(r => r.GetGisConnectionDtoByWorkspaceId(workspaceId))
-            .Returns(
+            .Setup(r => r.GetGisConnectionDtosByWorkspaceIdAsync(workspaceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
             [
                 new GisConnectionDto
                 {
@@ -113,7 +113,8 @@ public class GetGisWorkspaceEntitiesEndpointTests
 
         repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
             Times.Once);
-        repository.Verify(r => r.GetGisConnectionDtoByWorkspaceId(workspaceId), Times.Once);
+        repository.Verify(r => r.GetGisConnectionDtosByWorkspaceIdAsync(workspaceId, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private static WebApplicationFactory<Program> CreateApp(Mock<IGisConfigurationService> repository)

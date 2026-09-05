@@ -11,16 +11,49 @@ ASP.NET Core backend for the TDP GIS demo: a query API (`TdpGis.Api`), an admin 
 
 ## Architecture
 
+The GIS query API follows **Clean Architecture** (ports and adapters):
+
+```text
+Endpoint (Api) → UseCase (Application) → Ports (interfaces) → Adapters (Infrastructure)
+```
+
 | Project | Role |
 |---------|------|
-| `TdpGis.Api` | HTTP API, Entra JWT + workspace token, GIS entity list and queries |
+| `TdpGis.Api` | HTTP adapters (FastEndpoints), Entra JWT policy, HTTP status mapping |
 | `TdpGis.Endpoints` | Admin UI, Entra OIDC cookie, roles `Gis.Admin` / `Gis.Viewer` |
-| `TdpGis.Application` | API-facing contracts and DTOs |
+| `TdpGis.Application` | Use cases + ports; shared guards and failure kinds |
 | `TdpGis.AdminApplication` | Admin abstractions (metadata probes, etc.) |
-| `TdpGis.Infrastructure` | EF Core, Mongo/SQL query services, DI |
+| `TdpGis.Infrastructure` | Adapters: EF, Mongo/SQL; DI registers ports **and** use cases |
 | `TdpGis.Domain` | Entities (`GisConnection`, `DataSourceSetting`, workspaces, tokens) |
 
+### Use cases (Application)
+
+| Use case | Responsibility |
+|----------|----------------|
+| `SearchGisEntityUseCase` | Phrase query by `QueryField` |
+| `GetGisWorkspaceEntitiesUseCase` | List entity definitions for a workspace |
+
+Shared workspace-token checks live in `WorkspaceAccessGuard` (not in endpoints).
+
+### Failures vs HTTP
+
+- Application returns **`GisQueryFailureKind`** (e.g. `MissingWorkspaceAccessToken`, `EntityNotFound`) — **no raw `400`/`401`/`404` in Application**.
+- Api maps kinds to status codes in **`GisQueryHttp`**.
+- `GisWorkspaceAccess` only **reads** the `X-Access-Token` header; validation is in the use case / guard.
+
 `GisDataService` routes GIS data access by `DataSource.DatabaseType` to Mongo or relational SQL implementations.
+
+### Cursor rules and skills (same style on new APIs)
+
+This pattern is captured so agents reuse it:
+
+| Location | Purpose |
+|----------|---------|
+| `_Backend/.cursor/rules/clean-architecture-api.mdc` | Project rule when editing Api / Application / Infrastructure |
+| Repo `.cursor/rules/tdpgis-clean-architecture-api.mdc` | Same conventions at repo level |
+| Personal skill `dotnet-clean-architecture-api` (`~/.cursor/skills/...`) | Scaffold or implement **new** .NET APIs the same way |
+
+When starting a new API project, ask the agent to follow the **dotnet-clean-architecture-api** skill (or “Endpoint → UseCase → Ports → Adapters like TdpGis”).
 
 ## Technology Stack
 
@@ -166,7 +199,7 @@ Decode at [jwt.ms](https://jwt.ms): `aud` must be this API; `roles` should inclu
 
 - Header: **`X-Access-Token`**
 - Opaque string created in **TdpGis.Endpoints** (Workspace & token UI)
-- Validated in `GisWorkspaceAccess.TryValidateAsync` against the app DB (workspace id, active, not expired)
+- Validated in Application (`WorkspaceAccessGuard`) against the app DB (workspace id, active, not expired)
 
 **Why it exists**
 
@@ -282,16 +315,25 @@ Phrase queries project configured **property mappings** (no per-request schema p
 TdpGis.Api/
 ├── Authentication/          # EntraAppRoleClaims, IntegrationTestJwtAuthenticationHandler
 ├── GisQuery/
-│   ├── Endpoints/           # List entities, phrase query (more query types later)
-│   ├── Helpers/             # GisWorkspaceAccess (X-Access-Token)
+│   ├── Endpoints/           # Thin HTTP adapters → use cases
+│   ├── Helpers/             # GisWorkspaceAccess (header), GisQueryHttp (kind → status)
 │   └── Messages/            # Requests/responses (typed DTOs)
 └── Program.cs               # Auth pipeline, policies, Swagger schemes
 
+TdpGis.Application/
+├── Abstractions/            # Ports (IGisConfigurationService, IGisDataService, …)
+├── Common/                  # WorkspaceAccessGuard, GisQueryFailureKind
+├── UseCases/
+│   ├── SearchGisEntity/
+│   └── GetGisWorkspaceEntities/
+└── AppModels/               # Public DTOs (no connection strings on list)
+
 TdpGis.Infrastructure/
 ├── GisDataService.cs        # Routes Mongo vs SQL data access
-├── Mongo/                   # Mongo query/metadata
-├── Sql/                     # Postgres/SQL Server query + metadata probes
-└── Persistence/             # EF app DB
+├── Mongo/                   # Mongo adapters
+├── Sql/                     # Postgres/SQL Server adapters
+├── Persistence/             # EF app DB + GisConfigurationService
+└── DependencyInjection/     # Registers ports + use cases
 ```
 
 ## Development

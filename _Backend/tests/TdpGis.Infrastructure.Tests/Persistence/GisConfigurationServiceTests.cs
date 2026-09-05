@@ -139,7 +139,7 @@ public class GisConfigurationServiceTests
     }
 
     [Fact]
-    public async Task GetGisConnectionDtoByEntityId_ShouldReturnConnectionWithDataSourceAndMappings_WhenFound()
+    public async Task GetGisConnectionForQueryAsync_ShouldReturnConnectionWithDataSourceAndMappings_WhenFound()
     {
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
         var workspace = new GisWorkspace { Id = Guid.NewGuid(), Name = "ws" };
@@ -177,7 +177,7 @@ public class GisConfigurationServiceTests
         await fixture.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new GisConfigurationService(fixture.DbContext);
-        var result = await sut.GetGisConnectionDtoByEntityId(workspace.Id, entityId);
+        var result = await sut.GetGisConnectionForQueryAsync(workspace.Id, entityId);
 
         result.Should().NotBeNull();
         result!.DataSource.Should().NotBeNull();
@@ -186,7 +186,7 @@ public class GisConfigurationServiceTests
     }
 
     [Fact]
-    public async Task GetGisConnectionDtoByEntityId_ShouldReturnNull_WhenWorkspaceOrEntityDoesNotMatch()
+    public async Task GetGisConnectionForQueryAsync_ShouldReturnNull_WhenWorkspaceOrEntityDoesNotMatch()
     {
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
         var workspace = new GisWorkspace { Id = Guid.NewGuid(), Name = "ws" };
@@ -215,8 +215,8 @@ public class GisConfigurationServiceTests
         await fixture.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new GisConfigurationService(fixture.DbContext);
-        var wrongWorkspaceResult = await sut.GetGisConnectionDtoByEntityId(Guid.NewGuid(), entityId);
-        var wrongEntityResult = await sut.GetGisConnectionDtoByEntityId(workspace.Id, Guid.NewGuid());
+        var wrongWorkspaceResult = await sut.GetGisConnectionForQueryAsync(Guid.NewGuid(), entityId);
+        var wrongEntityResult = await sut.GetGisConnectionForQueryAsync(workspace.Id, Guid.NewGuid());
 
         wrongWorkspaceResult.Should().BeNull();
         wrongEntityResult.Should().BeNull();

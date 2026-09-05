@@ -2,15 +2,13 @@ using FastEndpoints;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using TdpGis.Api.GisQuery.Helpers;
 using TdpGis.Api.GisQuery.Messages;
-using TdpGis.Application.Abstractions;
 using TdpGis.Application.AppModels;
+using TdpGis.Application.UseCases.GetGisWorkspaceEntities;
 
 namespace TdpGis.Api.GisQuery.Endpoints;
 
-/// <summary>
-///     GET /api/gis-workspace-entities/{workspaceId} — list GIS entities for a workspace (access token in headers).
-/// </summary>
-public sealed class GetGisWorkspaceEntitiesEndpoint(IGisConfigurationService configurationService)
+/// <summary>HTTP adapter for <see cref="IGetGisWorkspaceEntitiesUseCase"/>.</summary>
+public sealed class GetGisWorkspaceEntitiesEndpoint(IGetGisWorkspaceEntitiesUseCase getGisWorkspaceEntities)
     : Endpoint<GetGisWorkspaceEntitiesRequest, List<GisConnectionDto>>
 {
     public override void Configure()
@@ -27,18 +25,23 @@ public sealed class GetGisWorkspaceEntitiesEndpoint(IGisConfigurationService con
 
     public override async Task HandleAsync(GetGisWorkspaceEntitiesRequest req, CancellationToken ct)
     {
-        var accessError =
-            await GisWorkspaceAccess.TryValidateAsync(configurationService, req.WorkspaceId, HttpContext.Request, ct);
-        if (accessError is { } err)
+        var result = await getGisWorkspaceEntities.ExecuteAsync(
+            new GetGisWorkspaceEntitiesQuery
+            {
+                WorkspaceId = req.WorkspaceId,
+                WorkspaceAccessToken = GisWorkspaceAccess.ResolveAccessToken(HttpContext.Request)
+            },
+            ct);
+
+        if (!result.Succeeded)
         {
             await HttpContext.Response.SendAsync(
-                new ApiMessageResponse { Message = err.Message },
-                err.StatusCode,
+                new ApiMessageResponse { Message = result.ErrorMessage! },
+                GisQueryHttp.StatusCode(result.FailureKind!.Value),
                 cancellation: ct);
             return;
         }
 
-        var entities = configurationService.GetGisConnectionDtoByWorkspaceId(req.WorkspaceId);
-        await Send.OkAsync(entities, ct);
+        await Send.OkAsync(result.Entities!, ct);
     }
 }

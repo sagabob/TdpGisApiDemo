@@ -18,7 +18,12 @@ public interface IGisConfigurationService
     /// <summary>
     ///     GIS connections assigned to the workspace, as public DTOs (no connection strings).
     /// </summary>
-    List<GisConnectionDto> GetGisConnectionDtoByWorkspaceId(Guid workspaceId);
+    Task<List<GisConnectionDto>> GetGisConnectionDtosByWorkspaceIdAsync(
+        Guid workspaceId,
+        CancellationToken cancellationToken = default);
 
-    Task<GisConnection?> GetGisConnectionDtoByEntityId(Guid workspaceId, Guid entityId);
+    /// <summary>
+    ///     Full GIS connection for a query operation (includes data source credentials and mappings).
+    /// </summary>
+    Task<GisConnection?> GetGisConnectionForQueryAsync(Guid workspaceId, Guid entityId);
 }
