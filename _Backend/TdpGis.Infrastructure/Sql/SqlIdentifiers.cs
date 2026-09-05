@@ -17,16 +17,26 @@ internal static class SqlIdentifiers
         return (trimmed[..dot].Trim('[', ']'), trimmed[(dot + 1)..].Trim('[', ']'));
     }
 
-    public static string Quote(SourceType databaseType, string identifier) =>
-        databaseType == SourceType.SqlServer ? QuoteSqlServer(identifier) : QuotePostgres(identifier);
+    public static string Quote(SourceType databaseType, string identifier)
+    {
+        return databaseType == SourceType.SqlServer ? QuoteSqlServer(identifier) : QuotePostgres(identifier);
+    }
 
-    public static string QuotePostgres(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
+    public static string QuotePostgres(string identifier)
+    {
+        return $"\"{identifier.Replace("\"", "\"\"")}\"";
+    }
 
-    public static string QuoteSqlServer(string identifier) => $"[{identifier.Replace("]", "]]")}]";
+    public static string QuoteSqlServer(string identifier)
+    {
+        return $"[{identifier.Replace("]", "]]")}]";
+    }
 
-    public static string EscapeLikePattern(string value) =>
-        value
+    public static string EscapeLikePattern(string value)
+    {
+        return value
             .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("%", "\\%", StringComparison.Ordinal)
             .Replace("_", "\\_", StringComparison.Ordinal);
+    }
 }

@@ -24,20 +24,24 @@ public sealed class SearchGisEntityResult
     public static SearchGisEntityResult Success(
         string searchedPhrase,
         Guid entityId,
-        List<JsonObject> collections) =>
-        new()
+        List<JsonObject> collections)
+    {
+        return new SearchGisEntityResult
         {
             Succeeded = true,
             SearchedPhrase = searchedPhrase,
             EntityId = entityId,
             Collections = collections
         };
+    }
 
-    public static SearchGisEntityResult Failure(GisQueryFailureKind kind) =>
-        new()
+    public static SearchGisEntityResult Failure(GisQueryFailureKind kind)
+    {
+        return new SearchGisEntityResult
         {
             Succeeded = false,
             FailureKind = kind,
             ErrorMessage = GisQueryFailureMessages.For(kind)
         };
+    }
 }

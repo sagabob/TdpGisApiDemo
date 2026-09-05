@@ -112,7 +112,8 @@ public class GisSqlDataServiceTests
             }
         };
 
-        var act = async () => await sut.GetSearchedInstances(connection, "x", 10, TestContext.Current.CancellationToken);
+        var act = async () =>
+            await sut.GetSearchedInstances(connection, "x", 10, TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<NotSupportedException>();
     }
 }

@@ -2,14 +2,19 @@ namespace TdpGis.Domain;
 
 public static class SourceTypeExtensions
 {
-    public static string ToDisplayName(this SourceType type) => type switch
+    public static string ToDisplayName(this SourceType type)
     {
-        SourceType.Mongodb => "MongoDB",
-        SourceType.Postgres => "PostgreSQL",
-        SourceType.SqlServer => "SQL Server",
-        _ => type.ToString()
-    };
+        return type switch
+        {
+            SourceType.Mongodb => "MongoDB",
+            SourceType.Postgres => "PostgreSQL",
+            SourceType.SqlServer => "SQL Server",
+            _ => type.ToString()
+        };
+    }
 
-    public static bool IsRelational(this SourceType type) =>
-        type is SourceType.Postgres or SourceType.SqlServer;
+    public static bool IsRelational(this SourceType type)
+    {
+        return type is SourceType.Postgres or SourceType.SqlServer;
+    }
 }

@@ -194,13 +194,16 @@ public sealed class SqlMetadataProvider(PostgresDataSourceCache postgresDataSour
         }
     }
 
-    private static object? ConvertSampleValue(object value) => value switch
+    private static object? ConvertSampleValue(object value)
     {
-        string or bool or byte or short or int or long or float or double or decimal => value,
-        DateTime or DateTimeOffset or Guid or TimeSpan => value,
-        byte[] bytes => Convert.ToHexString(bytes),
-        _ => value.ToString()
-    };
+        return value switch
+        {
+            string or bool or byte or short or int or long or float or double or decimal => value,
+            DateTime or DateTimeOffset or Guid or TimeSpan => value,
+            byte[] bytes => Convert.ToHexString(bytes),
+            _ => value.ToString()
+        };
+    }
 
     private static async Task<IReadOnlyList<string>> ListTableNamesAsync(DbConnection connection,
         SourceType databaseType, CancellationToken cancellationToken)
@@ -230,10 +233,8 @@ public sealed class SqlMetadataProvider(PostgresDataSourceCache postgresDataSour
         var tables = new List<string>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
-        {
             if (!reader.IsDBNull(0))
                 tables.Add(reader.GetString(0));
-        }
 
         return tables;
     }

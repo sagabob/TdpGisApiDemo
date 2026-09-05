@@ -322,11 +322,11 @@ public sealed class GisAdminAppService(
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(entityName))
-            return new DataSourceSampleApiResponse(false, "Collection or table is required.", false, [], "{}", null);
+            return new DataSourceSampleApiResponse(false, "Collection or table is required.", false, [], "{}");
 
         var dataSource = repository.GetDataSourceById(dataSourceId);
         if (dataSource is null)
-            return new DataSourceSampleApiResponse(false, "Saved connection not found.", false, [], "{}", null);
+            return new DataSourceSampleApiResponse(false, "Saved connection not found.", false, [], "{}");
 
         try
         {
@@ -345,12 +345,11 @@ public sealed class GisAdminAppService(
             }
 
             return new DataSourceSampleApiResponse(false, $"Unsupported database type '{dataSource.DatabaseType}'.",
-                false, [], "{}", null);
+                false, [], "{}");
         }
         catch (Exception ex)
         {
-            return new DataSourceSampleApiResponse(false, $"Could not read sample: {ex.Message}", false, [], "{}",
-                null);
+            return new DataSourceSampleApiResponse(false, $"Could not read sample: {ex.Message}", false, [], "{}");
         }
     }
 

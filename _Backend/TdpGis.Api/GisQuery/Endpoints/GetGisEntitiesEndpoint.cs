@@ -7,7 +7,7 @@ using TdpGis.Application.UseCases.GetGisWorkspaceEntities;
 
 namespace TdpGis.Api.GisQuery.Endpoints;
 
-/// <summary>HTTP adapter for <see cref="IGetGisWorkspaceEntitiesUseCase"/>.</summary>
+/// <summary>HTTP adapter for <see cref="IGetGisWorkspaceEntitiesUseCase" />.</summary>
 public sealed class GetGisWorkspaceEntitiesEndpoint(IGetGisWorkspaceEntitiesUseCase getGisWorkspaceEntities)
     : Endpoint<GetGisWorkspaceEntitiesRequest, List<GisConnectionDto>>
 {

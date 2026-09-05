@@ -12,6 +12,17 @@ public sealed class PostgresDataSourceCache : IDisposable
     private readonly ConcurrentDictionary<string, NpgsqlDataSource> _sources = new(StringComparer.Ordinal);
     private bool _disposed;
 
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        foreach (var source in _sources.Values)
+            source.Dispose();
+        _sources.Clear();
+    }
+
     public NpgsqlConnection CreateConnection(string connectionString)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -28,16 +39,5 @@ public sealed class PostgresDataSourceCache : IDisposable
             Timeout = SqlProbeConnectionLimits.GisMetadataTimeoutSeconds
         };
         return builder.ConnectionString;
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-        foreach (var source in _sources.Values)
-            source.Dispose();
-        _sources.Clear();
     }
 }

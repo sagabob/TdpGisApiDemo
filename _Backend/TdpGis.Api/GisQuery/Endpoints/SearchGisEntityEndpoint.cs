@@ -6,7 +6,7 @@ using TdpGis.Application.UseCases.SearchGisEntity;
 
 namespace TdpGis.Api.GisQuery.Endpoints;
 
-/// <summary>HTTP adapter for <see cref="ISearchGisEntityUseCase"/>.</summary>
+/// <summary>HTTP adapter for <see cref="ISearchGisEntityUseCase" />.</summary>
 public sealed class SearchGisEntityEndpoint(ISearchGisEntityUseCase searchGisEntity)
     : Endpoint<SearchGisEntityRequest, SearchGisEntityResponse>
 {
@@ -16,7 +16,8 @@ public sealed class SearchGisEntityEndpoint(ISearchGisEntityUseCase searchGisEnt
         AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
         Summary(s =>
         {
-            s.Summary = "Phrase query: returns mapped GIS rows for an entity where QueryField matches the search phrase.";
+            s.Summary =
+                "Phrase query: returns mapped GIS rows for an entity where QueryField matches the search phrase.";
             s.Description =
                 $"Path: `workspaceId`, `entityId`, `searchedPhrase`. One of the GIS query operations (others such as spatial search may be added later). Send `Authorization: Bearer` (Entra) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
         });

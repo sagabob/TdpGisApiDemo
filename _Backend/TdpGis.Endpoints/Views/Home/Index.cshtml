@@ -1,5 +1,5 @@
 @using System.Globalization
-@using TdpGis.Domain
+@using System.Text.RegularExpressions
 @model GisConnectionPageViewModel
 @{
     ViewData["Title"] = "Query Configuration";
@@ -16,7 +16,7 @@
         }
 
         // ADO.NET style: Password=...; or Pwd=...;
-        var masked = System.Text.RegularExpressions.Regex.Replace(
+        var masked = Regex.Replace(
             value,
             @"(?i)(Password|Pwd)\s*=\s*[^;]*",
             "$1=******");
@@ -161,7 +161,9 @@ else
                         <td class="text-nowrap font-monospace small">@c.Id</td>
                         <td>@c.Name</td>
                         <td class="text-muted">@c.Entity</td>
-                        <td class="small">@dsType <span class="font-monospace">@c.DataSourceId</span></td>
+                        <td class="small">
+                            @dsType <span class="font-monospace">@c.DataSourceId</span>
+                        </td>
                         <td class="small">@wsLabel</td>
                     </tr>
                 }

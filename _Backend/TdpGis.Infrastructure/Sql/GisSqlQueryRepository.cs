@@ -1,6 +1,5 @@
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
-using Npgsql;
 using TdpGis.Domain;
 
 namespace TdpGis.Infrastructure.Sql;
@@ -165,14 +164,18 @@ public sealed class GisSqlQueryRepository(PostgresDataSourceCache postgresDataSo
         return columns;
     }
 
-    private static bool IsSpatialType(string dataType) =>
-        dataType.Equals("geometry", StringComparison.OrdinalIgnoreCase) ||
-        dataType.Equals("geography", StringComparison.OrdinalIgnoreCase);
+    private static bool IsSpatialType(string dataType)
+    {
+        return dataType.Equals("geometry", StringComparison.OrdinalIgnoreCase) ||
+               dataType.Equals("geography", StringComparison.OrdinalIgnoreCase);
+    }
 
-    private static string SpatialAsTextExpression(SourceType databaseType, string quotedColumn) =>
-        databaseType == SourceType.SqlServer
+    private static string SpatialAsTextExpression(SourceType databaseType, string quotedColumn)
+    {
+        return databaseType == SourceType.SqlServer
             ? $"{quotedColumn}.STAsText()"
             : $"ST_AsText({quotedColumn})";
+    }
 
     private static void AddParameter(DbCommand command, string name, object value)
     {

@@ -24,10 +24,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // Add services to the container.
 // JsonStringEnumConverter: UI posts databaseType as "Postgres" / "SqlServer" / "Mongodb" over JSON.
 builder.Services.AddControllersWithViews()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    });
+    .AddJsonOptions(options => { options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); });
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddTdpGisEndpointsDataProtection();

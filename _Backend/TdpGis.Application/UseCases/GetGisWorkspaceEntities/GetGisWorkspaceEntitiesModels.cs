@@ -16,18 +16,22 @@ public sealed class GetGisWorkspaceEntitiesResult
     public string? ErrorMessage { get; private init; }
     public List<GisConnectionDto>? Entities { get; private init; }
 
-    public static GetGisWorkspaceEntitiesResult Success(List<GisConnectionDto> entities) =>
-        new()
+    public static GetGisWorkspaceEntitiesResult Success(List<GisConnectionDto> entities)
+    {
+        return new GetGisWorkspaceEntitiesResult
         {
             Succeeded = true,
             Entities = entities
         };
+    }
 
-    public static GetGisWorkspaceEntitiesResult Failure(GisQueryFailureKind kind) =>
-        new()
+    public static GetGisWorkspaceEntitiesResult Failure(GisQueryFailureKind kind)
+    {
+        return new GetGisWorkspaceEntitiesResult
         {
             Succeeded = false,
             FailureKind = kind,
             ErrorMessage = GisQueryFailureMessages.For(kind)
         };
+    }
 }

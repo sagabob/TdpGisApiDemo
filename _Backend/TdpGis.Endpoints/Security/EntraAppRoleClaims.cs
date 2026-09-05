@@ -22,7 +22,8 @@ public static class EntraAppRoleClaims
         if (user?.Identity?.IsAuthenticated != true || string.IsNullOrEmpty(roleValue))
             return false;
 
-        return user.Claims.Where(claim => IsRoleClaimType(claim.Type)).Any(claim => string.Equals(claim.Value, roleValue, StringComparison.Ordinal));
+        return user.Claims.Where(claim => IsRoleClaimType(claim.Type))
+            .Any(claim => string.Equals(claim.Value, roleValue, StringComparison.Ordinal));
     }
 
     private static bool IsRoleClaimType(string type)

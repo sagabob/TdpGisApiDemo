@@ -96,7 +96,6 @@ public static class OutputMapping
             var trimmed = s.Trim();
             if ((trimmed.StartsWith('{') && trimmed.EndsWith('}')) ||
                 (trimmed.StartsWith('[') && trimmed.EndsWith(']')))
-            {
                 try
                 {
                     return JsonNode.Parse(trimmed) ?? JsonValue.Create(s)!;
@@ -105,12 +104,12 @@ public static class OutputMapping
                 {
                     return JsonValue.Create(s)!;
                 }
-            }
 
             return JsonValue.Create(s)!;
         }
 
-        if (value is bool or byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal)
+        if (value is bool or byte or sbyte or short or ushort or int or uint or long or ulong or float or double
+            or decimal)
             return JsonValue.Create(value)!;
 
         if (value is DateTime dt)

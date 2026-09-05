@@ -1,9 +1,7 @@
-using System.Text.Json.Nodes;
 using FluentAssertions;
 using Moq;
 using TdpGis.AdminApplication.Abstractions;
 using TdpGis.Domain;
-using TdpGis.Infrastructure;
 using TdpGis.Infrastructure.Mongo;
 using TdpGis.Infrastructure.Sql;
 using Xunit;
@@ -92,8 +90,9 @@ public class GisDataServiceTests
         metadata.VerifyNoOtherCalls();
     }
 
-    private static GisConnection CreateConnection(SourceType databaseType, string connectionString, string entity) =>
-        new()
+    private static GisConnection CreateConnection(SourceType databaseType, string connectionString, string entity)
+    {
+        return new GisConnection
         {
             Id = Guid.NewGuid(),
             Name = "Entity",
@@ -110,4 +109,5 @@ public class GisDataServiceTests
                 DatabaseType = databaseType
             }
         };
+    }
 }
