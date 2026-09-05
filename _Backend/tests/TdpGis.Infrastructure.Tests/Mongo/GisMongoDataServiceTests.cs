@@ -70,6 +70,7 @@ public class GisMongoDataServiceTests
             DataSource = new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = connectionString,
                 DatabaseType = SourceType.Mongodb
             }

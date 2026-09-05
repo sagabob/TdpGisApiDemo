@@ -31,10 +31,10 @@ public interface IGisConfigurationRepository
 
     DataSourceSetting? GetDataSourceById(Guid id);
 
-    Task<DataSourceSetting> CreateDataSourceAsync(SourceType databaseType, string connectionString,
+    Task<DataSourceSetting> CreateDataSourceAsync(SourceType databaseType, string name, string connectionString,
         CancellationToken cancellationToken = default);
 
-    Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString,
+    Task<DataSourceSetting> CreateMongoDataSourceAsync(string name, string connectionString,
         CancellationToken cancellationToken = default);
 
     List<GisWorkspace> GetAllWorkspaces();

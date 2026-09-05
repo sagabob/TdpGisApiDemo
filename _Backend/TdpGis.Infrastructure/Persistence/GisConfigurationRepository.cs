@@ -129,6 +129,7 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
 
         return query
             .OrderBy(x => x.DatabaseType)
+            .ThenBy(x => x.Name)
             .ThenBy(x => x.ConnectionString)
             .ToList();
     }
@@ -145,17 +146,28 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
             .FirstOrDefault(x => x.Id == id);
     }
 
-    public async Task<DataSourceSetting> CreateDataSourceAsync(SourceType databaseType, string connectionString,
-        CancellationToken cancellationToken = default)
+    public async Task<DataSourceSetting> CreateDataSourceAsync(SourceType databaseType, string name,
+        string connectionString, CancellationToken cancellationToken = default)
     {
+        var normalizedName = name.Trim();
         var normalized = connectionString.Trim();
         var existing = dbContext.DataSourceSettings
             .FirstOrDefault(x => x.DatabaseType == databaseType && x.ConnectionString == normalized);
-        if (existing is not null) return existing;
+        if (existing is not null)
+        {
+            if (!string.Equals(existing.Name, normalizedName, StringComparison.Ordinal))
+            {
+                existing.Name = normalizedName;
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            return existing;
+        }
 
         var ds = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = normalizedName,
             ConnectionString = normalized,
             DatabaseType = databaseType
         };
@@ -164,10 +176,10 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
         return entity.Entity;
     }
 
-    public Task<DataSourceSetting> CreateMongoDataSourceAsync(string connectionString,
+    public Task<DataSourceSetting> CreateMongoDataSourceAsync(string name, string connectionString,
         CancellationToken cancellationToken = default)
     {
-        return CreateDataSourceAsync(SourceType.Mongodb, connectionString, cancellationToken);
+        return CreateDataSourceAsync(SourceType.Mongodb, name, connectionString, cancellationToken);
     }
 
     public List<GisWorkspace> GetAllWorkspaces()

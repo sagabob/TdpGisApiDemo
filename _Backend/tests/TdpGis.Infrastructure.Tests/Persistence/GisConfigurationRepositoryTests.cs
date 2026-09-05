@@ -14,6 +14,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -46,12 +47,14 @@ public class GisConfigurationRepositoryTests
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
         var sut = new GisConfigurationRepository(fixture.DbContext);
 
-        var first = await sut.CreateMongoDataSourceAsync("  mongodb://localhost:27017/db  ",
+        var first = await sut.CreateMongoDataSourceAsync("Primary mongo", "  mongodb://localhost:27017/db  ",
             TestContext.Current.CancellationToken);
         var second =
-            await sut.CreateMongoDataSourceAsync("mongodb://localhost:27017/db", TestContext.Current.CancellationToken);
+            await sut.CreateMongoDataSourceAsync("Primary mongo renamed", "mongodb://localhost:27017/db",
+                TestContext.Current.CancellationToken);
 
         second.Id.Should().Be(first.Id);
+        second.Name.Should().Be("Primary mongo renamed");
         fixture.DbContext.DataSourceSettings.Count().Should().Be(1);
     }
 
@@ -63,6 +66,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -140,6 +144,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -190,6 +195,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -220,6 +226,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -283,6 +290,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -342,6 +350,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -396,13 +405,15 @@ public class GisConfigurationRepositoryTests
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
         var sut = new GisConfigurationRepository(fixture.DbContext);
 
-        var pg = await sut.CreateDataSourceAsync(SourceType.Postgres, "Host=localhost;Database=gis",
+        var pg = await sut.CreateDataSourceAsync(SourceType.Postgres, "Local PG", "Host=localhost;Database=gis",
             TestContext.Current.CancellationToken);
-        var sql = await sut.CreateDataSourceAsync(SourceType.SqlServer, "Server=localhost;Database=GisDb",
+        var sql = await sut.CreateDataSourceAsync(SourceType.SqlServer, "Local SQL", "Server=localhost;Database=GisDb",
             TestContext.Current.CancellationToken);
 
         pg.DatabaseType.Should().Be(SourceType.Postgres);
+        pg.Name.Should().Be("Local PG");
         sql.DatabaseType.Should().Be(SourceType.SqlServer);
+        sql.Name.Should().Be("Local SQL");
         sut.GetDataSources().Should().HaveCount(2);
         sut.GetMongoDataSources().Should().BeEmpty();
     }
@@ -415,18 +426,21 @@ public class GisConfigurationRepositoryTests
             new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "mongodb://a",
                 DatabaseType = SourceType.Mongodb
             },
             new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "Host=pg",
                 DatabaseType = SourceType.Postgres
             },
             new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "Server=sql",
                 DatabaseType = SourceType.SqlServer
             });
@@ -447,18 +461,21 @@ public class GisConfigurationRepositoryTests
             new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "mongodb://b",
                 DatabaseType = SourceType.Mongodb
             },
             new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "mongodb://a",
                 DatabaseType = SourceType.Mongodb
             },
             new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "postgres://x",
                 DatabaseType = SourceType.Postgres
             });
@@ -479,6 +496,7 @@ public class GisConfigurationRepositoryTests
         var ds = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -497,10 +515,12 @@ public class GisConfigurationRepositoryTests
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
         var sut = new GisConfigurationRepository(fixture.DbContext);
 
-        var a = await sut.CreateMongoDataSourceAsync("mongodb://host-a/db", TestContext.Current.CancellationToken);
-        var b = await sut.CreateMongoDataSourceAsync("mongodb://host-b/db", TestContext.Current.CancellationToken);
+        var a = await sut.CreateMongoDataSourceAsync("Host A", "mongodb://host-a/db", TestContext.Current.CancellationToken);
+        var b = await sut.CreateMongoDataSourceAsync("Host B", "mongodb://host-b/db", TestContext.Current.CancellationToken);
 
         a.Id.Should().NotBe(b.Id);
+        a.Name.Should().Be("Host A");
+        b.Name.Should().Be("Host B");
         fixture.DbContext.DataSourceSettings.Count().Should().Be(2);
     }
 
@@ -512,6 +532,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -712,6 +733,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };
@@ -748,6 +770,7 @@ public class GisConfigurationRepositoryTests
         var source = new DataSourceSetting
         {
             Id = Guid.NewGuid(),
+            Name = "Test source",
             ConnectionString = "mongodb://localhost:27017/db",
             DatabaseType = SourceType.Mongodb
         };

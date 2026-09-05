@@ -121,6 +121,7 @@ public class SearchGisEntityUseCaseTests
             DataSource = new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "mongodb://localhost",
                 DatabaseType = SourceType.Mongodb
             }

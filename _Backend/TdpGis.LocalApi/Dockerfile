@@ -1,5 +1,7 @@
 # See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
+# Build context must be the _Backend folder (parent of TdpGis.LocalApi).
+
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
@@ -27,4 +29,5 @@ RUN dotnet publish "./TdpGis.LocalApi.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 ENTRYPOINT ["dotnet", "TdpGis.LocalApi.dll"]

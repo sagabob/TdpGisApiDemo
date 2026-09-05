@@ -1,3 +1,6 @@
+# Build context must be the _Backend folder (parent of TdpGis.Api).
+# Example: docker build -f TdpGis.Api/Dockerfile -t tdp-gis-api:latest .
+
 # See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)

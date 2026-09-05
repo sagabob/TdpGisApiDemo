@@ -52,10 +52,14 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
             return View("Index", pageModel);
         }
 
-        var result = await gisAdmin.SaveDataSourceAsync(model.DatabaseType, model.ConnectionString, cancellationToken);
+        var result = await gisAdmin.SaveDataSourceAsync(model.DatabaseType, model.Name, model.ConnectionString,
+            cancellationToken);
         if (!result.IsSuccess)
         {
-            ApplyFormResultToModelState(result);
+            foreach (var kv in result.FieldErrors)
+                ModelState.AddModelError($"DataSourceForm.{kv.Key}", kv.Value);
+            if (!string.IsNullOrEmpty(result.ModelOnlyError))
+                ModelState.AddModelError(string.Empty, result.ModelOnlyError);
             var pageModel = BuildPageModel();
             pageModel.DataSourceForm = model;
             return View("Index", pageModel);

@@ -32,6 +32,11 @@ public class GisConnectionFormViewModel
 public class DataSourceConnectionFormViewModel
 {
     [Required]
+    [StringLength(200)]
+    [Display(Name = "Name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
     [Display(Name = "Database type")]
     public SourceType DatabaseType { get; set; } = SourceType.Mongodb;
 

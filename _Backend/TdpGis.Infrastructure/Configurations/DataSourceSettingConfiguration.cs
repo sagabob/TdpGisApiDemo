@@ -12,6 +12,10 @@ public class DataSourceSettingConfiguration : IEntityTypeConfiguration<DataSourc
 
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.Name)
+            .IsRequired()
+            .HasMaxLength(200);
+
         builder.Property(x => x.ConnectionString)
             .IsRequired();
 

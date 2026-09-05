@@ -350,18 +350,36 @@ dotnet test --project tests/TdpGis.Application.Tests/TdpGis.Application.Tests.cs
 
 ### Build / Docker
 
+Build context is always the **`_Backend`** directory (so project references resolve).
+
 ```bash
+cd TdpGisApiDemo/_Backend
 dotnet build
 dotnet publish -c Release -o ./publish
 
+# API
 docker build -f TdpGis.Api/Dockerfile -t tdp-gis-api:latest .
 docker run -p 8080:8080 \
   -e AzureAd__TenantId=<tenant-id> \
   -e AzureAd__ClientId=<client-id> \
   -e AzureAd__Audience=api://<client-id> \
+  -e AzureAd__ApiAccessAppRole=TdpGisApi.Access \
   -e ConnectionStrings__Database=<postgres-connection-string> \
   tdp-gis-api:latest
+
+# Admin UI
+docker build -f TdpGis.Endpoints/Dockerfile -t tdp-gis-endpoints:latest .
+docker run -p 8080:8080 \
+  -e AzureAd__TenantId=<tenant-id> \
+  -e AzureAd__ClientId=<admin-web-client-id> \
+  -e AzureAd__ClientSecret=<secret> \
+  -e AzureAd__AdminAppRole=Gis.Admin \
+  -e AzureAd__ViewerAppRole=Gis.Viewer \
+  -e ConnectionStrings__Database=<postgres-connection-string> \
+  tdp-gis-endpoints:latest
 ```
+
+Images use `aspnet:10.0` / `sdk:10.0`, listen on `http://0.0.0.0:8080`, and install `libgssapi-krb5-2` for Npgsql on Linux.
 
 ## Troubleshooting
 

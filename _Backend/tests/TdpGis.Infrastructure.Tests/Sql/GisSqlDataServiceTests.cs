@@ -75,6 +75,7 @@ public class GisSqlDataServiceTests
             DataSource = new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = connectionString,
                 DatabaseType = databaseType
             }
@@ -107,6 +108,7 @@ public class GisSqlDataServiceTests
             DataSource = new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "mongodb://localhost",
                 DatabaseType = SourceType.Mongodb
             }

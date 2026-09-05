@@ -38,10 +38,16 @@ public sealed class GisAdminAppService(
         form.PropertyMappingsText = BuildPropertyMappingsText(c);
     }
 
-    public async Task<FormActionResult> SaveDataSourceAsync(SourceType databaseType, string connectionString,
-        CancellationToken cancellationToken = default)
+    public async Task<FormActionResult> SaveDataSourceAsync(SourceType databaseType, string name,
+        string connectionString, CancellationToken cancellationToken = default)
     {
         var result = new FormActionResult();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            result.AddFieldError("Name", "Name is required.");
+            return result;
+        }
+
         var validation = await ValidateDataSourceConnectionAsync(databaseType, connectionString, cancellationToken);
         if (!validation.Ok)
         {
@@ -49,8 +55,8 @@ public sealed class GisAdminAppService(
             return result;
         }
 
-        await repository.CreateDataSourceAsync(databaseType, connectionString, cancellationToken);
-        result.SuccessMessage = $"Saved {databaseType.ToDisplayName()} connection.";
+        await repository.CreateDataSourceAsync(databaseType, name, connectionString, cancellationToken);
+        result.SuccessMessage = $"Saved {databaseType.ToDisplayName()} connection '{name.Trim()}'.";
         return result;
     }
 

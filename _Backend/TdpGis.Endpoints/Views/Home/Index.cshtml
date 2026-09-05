@@ -53,7 +53,8 @@
 
     static string DataSourceOptionLabel(DataSourceSetting ds)
     {
-        return $"[{ds.DatabaseType.ToDisplayName()}] {MaskConnectionString(ds.ConnectionString)}";
+        var name = string.IsNullOrWhiteSpace(ds.Name) ? "(unnamed)" : ds.Name;
+        return $"{name} [{ds.DatabaseType.ToDisplayName()}] {MaskConnectionString(ds.ConnectionString)}";
     }
 }
 
@@ -101,16 +102,17 @@ else
         <table class="table table-sm table-bordered align-middle">
             <thead>
             <tr>
-                <th scope="col">Data source id</th>
+                <th scope="col">Name</th>
                 <th scope="col">Type</th>
                 <th scope="col">Connection string</th>
+                <th scope="col">Data source id</th>
             </tr>
             </thead>
             <tbody>
             @if (Model.SavedDataSources.Count == 0)
             {
                 <tr>
-                    <td colspan="3" class="text-muted">None</td>
+                    <td colspan="4" class="text-muted">None</td>
                 </tr>
             }
             else
@@ -118,9 +120,10 @@ else
                 foreach (var ds in Model.SavedDataSources)
                 {
                     <tr>
-                        <td class="text-nowrap font-monospace small">@ds.Id</td>
+                        <td>@(string.IsNullOrWhiteSpace(ds.Name) ? "—" : ds.Name)</td>
                         <td>@ds.DatabaseType.ToDisplayName()</td>
                         <td class="small">@MaskConnectionString(ds.ConnectionString)</td>
+                        <td class="text-nowrap font-monospace small">@ds.Id</td>
                     </tr>
                 }
             }
@@ -156,7 +159,11 @@ else
                         : c.GisWorkspaceId.HasValue
                             ? c.GisWorkspaceId.Value.ToString()
                             : "—";
-                    var dsType = c.DataSource is not null ? c.DataSource.DatabaseType.ToDisplayName() : "—";
+                    var dsType = c.DataSource is not null
+                        ? (string.IsNullOrWhiteSpace(c.DataSource.Name)
+                            ? c.DataSource.DatabaseType.ToDisplayName()
+                            : $"{c.DataSource.Name} ({c.DataSource.DatabaseType.ToDisplayName()})")
+                        : "—";
                     <tr>
                         <td class="text-nowrap font-monospace small">@c.Id</td>
                         <td>@c.Name</td>
@@ -279,6 +286,11 @@ else
 
         <form asp-action="SaveDataSourceConnection" method="post">
             @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <label asp-for="DataSourceForm.Name" class="form-label"></label>
+                <input asp-for="DataSourceForm.Name" class="form-control" placeholder="e.g. Prod Mongo GIS" autocomplete="off"/>
+                <span asp-validation-for="DataSourceForm.Name" class="text-danger"></span>
+            </div>
             <div class="mb-3">
                 <label asp-for="DataSourceForm.DatabaseType" class="form-label"></label>
                 <select asp-for="DataSourceForm.DatabaseType" class="form-select" id="dataSourceTypeSelect">

@@ -55,7 +55,11 @@ public class PropertyMapping
 public class DataSourceSetting
 {
     public Guid Id { get; set; }
+
+    public required string Name { get; set; }
+
     public required string ConnectionString { get; set; }
+
     public SourceType DatabaseType { get; set; }
 }
 

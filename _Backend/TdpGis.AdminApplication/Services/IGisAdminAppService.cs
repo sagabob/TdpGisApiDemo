@@ -11,7 +11,7 @@ public interface IGisAdminAppService
 
     void MapGisConnectionToForm(GisConnectionFormState form, GisConnection connection);
 
-    Task<FormActionResult> SaveDataSourceAsync(SourceType databaseType, string connectionString,
+    Task<FormActionResult> SaveDataSourceAsync(SourceType databaseType, string name, string connectionString,
         CancellationToken cancellationToken = default);
 
     Task<FormActionResult> SaveGisConnectionAsync(SaveGisConnectionInput input,

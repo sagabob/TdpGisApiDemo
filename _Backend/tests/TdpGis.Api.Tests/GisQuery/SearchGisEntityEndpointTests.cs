@@ -112,6 +112,7 @@ public class SearchGisEntityEndpointTests
             DataSource = new DataSourceSetting
             {
                 Id = Guid.NewGuid(),
+                Name = "Test source",
                 ConnectionString = "mongodb://localhost:27017/db",
                 DatabaseType = SourceType.Mongodb
             }
