@@ -43,7 +43,9 @@ jobs:
 
           for project in "${projects[@]}"; do
             echo "Running tests for $project"
-            dotnet test --project "$project" --configuration Release --nologo
+            # Do not pass --nologo: in MTP mode it is forwarded to the test host and fails with exit 5 / "Zero tests ran"
+            # https://github.com/dotnet/sdk/issues/55309
+            dotnet test --project "$project" --configuration Release
           done
 
       - name: Set up Docker Buildx
