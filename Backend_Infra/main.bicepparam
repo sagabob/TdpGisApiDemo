@@ -9,11 +9,13 @@ param appsIdentityName = 'id-tdpgis-containerapps-demo'
 param keyVaultName = 'kv-tdpgis-demo-01'
 
 // Pin image tags for demo; do not use :latest.
-param apiImage = 'docker.io/<dockerhub-user>/tdpgis-api:<version>'
-param endpointsImage = 'docker.io/<dockerhub-user>/tdpgis-endpoints:<version>'
+param apiImage = 'docker.io/bobpham/tdpgis-api:latest'
+param endpointsImage = 'docker.io/bobpham/tdpgis-admin-ui:latest'
 
 param registryServer = 'docker.io'
-param registryUsername = '<dockerhub-user>'
+// Public Docker Hub images: leave empty. Private images: set the username and
+// put TDPGIS_REGISTRY_PASSWORD in .env, then run -Phase Secrets before -Phase Apps.
+param registryUsername = ''
 
 param apiMinReplicas = 1
 param apiMaxReplicas = 3

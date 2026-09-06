@@ -220,7 +220,7 @@ function Wait-VaultAccess {
   throw "No Key Vault access after 3 minutes. Wait and re-run: -Phase Secrets"
 }
 
-function Ensure-KeyVaultRole {
+function Add-KeyVaultRoleAssignment {
   param(
     [Parameter(Mandatory)] [string] $Scope,
     [Parameter(Mandatory)] [string] $ObjectId,
@@ -277,8 +277,8 @@ function Invoke-Bootstrap {
   Write-Host "Key Vault: $($outputs.keyVaultNameOut.value)"
   Write-Host "Identity:  $($outputs.appsIdentityNameOut.value)"
   Write-Host 'Assigning Key Vault RBAC (skipped if already present)...'
-  Ensure-KeyVaultRole -Scope $vaultId -ObjectId $officerId -RoleName 'Key Vault Secrets Officer' -PrincipalType 'User'
-  Ensure-KeyVaultRole -Scope $vaultId -ObjectId $identityPrincipalId -RoleName 'Key Vault Secrets User' -PrincipalType 'ServicePrincipal'
+  Add-KeyVaultRoleAssignment -Scope $vaultId -ObjectId $officerId -RoleName 'Key Vault Secrets Officer' -PrincipalType 'User'
+  Add-KeyVaultRoleAssignment -Scope $vaultId -ObjectId $identityPrincipalId -RoleName 'Key Vault Secrets User' -PrincipalType 'ServicePrincipal'
 }
 
 function Invoke-Secrets {

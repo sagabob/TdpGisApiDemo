@@ -139,10 +139,6 @@ module logAnalytics 'modules/logAnalytics.bicep' = {
   }
 }
 
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2025-02-01' existing = {
-  name: logAnalyticsName
-}
-
 module containerAppsEnvironment 'modules/containerAppsEnvironment.bicep' = {
   name: 'containerAppsEnvironment'
   params: {
@@ -150,7 +146,7 @@ module containerAppsEnvironment 'modules/containerAppsEnvironment.bicep' = {
     location: location
     tags: tags
     logAnalyticsCustomerId: logAnalytics.outputs.customerId
-    logAnalyticsSharedKey: logAnalyticsWorkspace.listKeys().primarySharedKey
+    logAnalyticsSharedKey: logAnalytics.outputs.primarySharedKey
   }
 }
 
