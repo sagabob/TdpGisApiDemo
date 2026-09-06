@@ -26,20 +26,24 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+          global-json-file: ./_Backend/global.json
 
+      # MTP mode (global.json test.runner) requires cwd under _Backend and --project
+      # https://aka.ms/dotnet-test-mtp-error
       - name: Run backend unit tests
+        working-directory: ./_Backend
         shell: bash
         run: |
           shopt -s globstar nullglob
-          projects=(./_Backend/tests/**/*.csproj)
+          projects=(./tests/**/*.csproj)
           if [ ${#projects[@]} -eq 0 ]; then
-            echo "No test projects found under ./_Backend/tests"
+            echo "No test projects found under ./tests"
             exit 1
           fi
 
           for project in "${projects[@]}"; do
             echo "Running tests for $project"
-            dotnet test "$project" --configuration Release --nologo
+            dotnet test --project "$project" --configuration Release --nologo
           done
 
       - name: Set up Docker Buildx
