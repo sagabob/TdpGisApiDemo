@@ -10,12 +10,25 @@ import { ensureGetOrHead } from '../utils/proxyUtils.js';
 import { getEntraAccessTokenFromRequest, isRequestAuthenticated } from '../auth/oauthShared.js';
 import { bootstrapGisApiAccessTokenCookie } from '../security/enable-gis-api.js';
 
-type EntityRecord = Record<string, unknown> & { id?: string; workspaceId?: string };
+type EntityRecord = Record<string, unknown> & {
+  id?: string;
+  workspaceId?: string;
+  isPrivate?: boolean;
+};
 
-function annotateWithWorkspace(items: unknown[], workspaceId: string): EntityRecord[] {
+function annotateWithWorkspace(
+  items: unknown[],
+  workspaceId: string,
+  options?: { isPrivate?: boolean },
+): EntityRecord[] {
+  const isPrivate = options?.isPrivate === true;
   return items.map((raw) => {
-    if (!raw || typeof raw !== 'object') return { workspaceId } as EntityRecord;
-    return { ...(raw as object), workspaceId } as EntityRecord;
+    const base =
+      raw && typeof raw === 'object'
+        ? ({ ...(raw as object), workspaceId } as EntityRecord)
+        : ({ workspaceId } as EntityRecord);
+    if (isPrivate) base.isPrivate = true;
+    return base;
   });
 }
 
@@ -94,7 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (priv) {
         try {
           const privateRaw = await fetchWorkspaceEntitiesJson(priv, req, bootstrapBearer);
-          const privateAnnotated = annotateWithWorkspace(privateRaw, priv.workspaceId);
+          const privateAnnotated = annotateWithWorkspace(privateRaw, priv.workspaceId, {
+            isPrivate: true,
+          });
           const seen = new Set(
             merged.map((e) => mergeKey(String(e.workspaceId ?? ''), String(e.id ?? ''))),
           );

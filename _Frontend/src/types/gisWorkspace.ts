@@ -18,4 +18,6 @@ export interface GisConnectionDto {
     description?: string;
     /** Set when entities come from merged public + private workspace lists (see `/api/gis/workspace-entities`). */
     workspaceId?: string;
+    /** True when this entity was loaded from the private workspace (signed-in merge). */
+    isPrivate?: boolean;
 }
