@@ -142,6 +142,41 @@ function geometryForMap(lng: number, lat: number): GeoFeature['geometry'] {
 }
 
 /**
+ * Geometry / pin fields must not appear in dropdown or popup text (`placeName` / `locality`).
+ * Matches common property names and WKT payloads like `POINT(...)` / `POLYGON(...)`.
+ */
+const HIDDEN_DISPLAY_PROPERTY_NAMES = new Set([
+  'center_point',
+  'centerpoint',
+  'geom',
+  'geometry',
+  'shape',
+  'wkt',
+  'the_geom',
+  'wkb_geometry',
+  'geog',
+  'geography',
+]);
+
+function isHiddenDisplayPropertyKey(key: string): boolean {
+  return HIDDEN_DISPLAY_PROPERTY_NAMES.has(key.trim().toLowerCase());
+}
+
+function looksLikeGeometryDisplayValue(value: string): boolean {
+  return /\b(POINT|POLYGON|LINESTRING|MULTIPOINT|MULTIPOLYGON|MULTILINESTRING|GEOMETRYCOLLECTION)\b/i.test(
+    value,
+  );
+}
+
+function isDisplayableStringField(key: string, value: unknown, excludeValue?: string): value is string {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  if (isHiddenDisplayPropertyKey(key)) return false;
+  if (looksLikeGeometryDisplayValue(value)) return false;
+  if (excludeValue !== undefined && value === excludeValue) return false;
+  return true;
+}
+
+/**
  * Maps FastEndpoints search payload (`collections` = JSON rows keyed by property labels)
  * into the shape expected by `GisMap` / dropdown (GeoJSON-like geometry with legacy coordinate access).
  *
@@ -160,6 +195,14 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
     labelForPropertyName(entity, '_id') ??
     entity.propertyMappings.find((m) => m.propertyName.toLowerCase() === 'id')?.propertyLabel;
 
+  // Also hide mapped labels for geometry property names (label may differ from propertyName).
+  const hiddenLabels = new Set<string>();
+  for (const m of entity.propertyMappings) {
+    if (isHiddenDisplayPropertyKey(m.propertyName) || isHiddenDisplayPropertyKey(m.propertyLabel)) {
+      hiddenLabels.add(m.propertyLabel);
+    }
+  }
+
   const out: GeoFeature[] = [];
 
   rows.forEach((raw, index) => {
@@ -173,16 +216,27 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
       idLabel && row[idLabel] != null && row[idLabel] !== ''
         ? String(row[idLabel])
         : `row-${index}`;
-    // "queryField" label is the best display title; fallback to first string in row.
+
     const placeName =
-      queryLabel && row[queryLabel] != null
+      queryLabel &&
+      row[queryLabel] != null &&
+      !isHiddenDisplayPropertyKey(queryLabel) &&
+      !hiddenLabels.has(queryLabel) &&
+      !looksLikeGeometryDisplayValue(String(row[queryLabel]))
         ? String(row[queryLabel])
-        : String(Object.values(row).find((v) => typeof v === 'string') ?? 'Result');
+        : String(
+            Object.entries(row).find(
+              ([key, v]) =>
+                !hiddenLabels.has(key) && isDisplayableStringField(key, v),
+            )?.[1] ?? 'Result',
+          );
 
     const otherString =
       Object.entries(row).find(
         ([key, v]) =>
-          typeof v === 'string' && key !== queryLabel && v !== placeName && String(v).length > 0,
+          key !== queryLabel &&
+          !hiddenLabels.has(key) &&
+          isDisplayableStringField(key, v, placeName),
       )?.[1] ?? '';
 
     out.push({
