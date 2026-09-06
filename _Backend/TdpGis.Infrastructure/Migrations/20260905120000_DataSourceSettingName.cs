@@ -1,10 +1,13 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using TdpGis.Infrastructure.Persistence;
 
 #nullable disable
 
 namespace TdpGis.Infrastructure.Migrations;
 
-/// <inheritdoc />
+[DbContext(typeof(GisAppDbContext))]
+[Migration("20260905120000_DataSourceSettingName")]
 public partial class DataSourceSettingName : Migration
 {
     /// <inheritdoc />

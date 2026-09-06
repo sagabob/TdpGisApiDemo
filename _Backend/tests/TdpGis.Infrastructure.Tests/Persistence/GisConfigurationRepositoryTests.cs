@@ -712,6 +712,76 @@ public class GisConfigurationRepositoryTests
     }
 
     [Fact]
+    public async Task SetConnectionsWorkspaceAsync_ShouldClearUncheckedEntitiesFromWorkspace()
+    {
+        await using var fixture = await SqliteDbContextFactory.CreateAsync();
+        var ws = new GisWorkspace { Id = Guid.NewGuid(), Name = "ws" };
+        var other = new GisWorkspace { Id = Guid.NewGuid(), Name = "other" };
+        var source = new DataSourceSetting
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test source",
+            ConnectionString = "mongodb://localhost:27017/db",
+            DatabaseType = SourceType.Mongodb
+        };
+
+        var keep = new GisConnection
+        {
+            Id = Guid.NewGuid(),
+            Name = "Keep",
+            Description = "",
+            GeometryType = GeometryType.Point,
+            QueryField = "q",
+            PropertyMappings = [],
+            Entity = "keep",
+            EntityLabel = "Keep",
+            GisWorkspaceId = ws.Id,
+            DataSource = source
+        };
+        var remove = new GisConnection
+        {
+            Id = Guid.NewGuid(),
+            Name = "Remove",
+            Description = "",
+            GeometryType = GeometryType.Point,
+            QueryField = "q",
+            PropertyMappings = [],
+            Entity = "remove",
+            EntityLabel = "Remove",
+            GisWorkspaceId = ws.Id,
+            DataSource = source
+        };
+        var elsewhere = new GisConnection
+        {
+            Id = Guid.NewGuid(),
+            Name = "Elsewhere",
+            Description = "",
+            GeometryType = GeometryType.Point,
+            QueryField = "q",
+            PropertyMappings = [],
+            Entity = "else",
+            EntityLabel = "Else",
+            GisWorkspaceId = other.Id,
+            DataSource = source
+        };
+
+        fixture.DbContext.GisWorkspaces.AddRange(ws, other);
+        fixture.DbContext.GisConnections.AddRange(keep, remove, elsewhere);
+        await fixture.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new GisConfigurationRepository(fixture.DbContext);
+        var assigned = await sut.SetConnectionsWorkspaceAsync(
+            ws.Id,
+            [keep.Id],
+            TestContext.Current.CancellationToken);
+
+        assigned.Should().Be(1);
+        keep.GisWorkspaceId.Should().Be(ws.Id);
+        remove.GisWorkspaceId.Should().BeNull();
+        elsewhere.GisWorkspaceId.Should().Be(other.Id);
+    }
+
+    [Fact]
     public async Task SetConnectionsWorkspaceAsync_ShouldThrow_WhenWorkspaceDoesNotExist()
     {
         await using var fixture = await SqliteDbContextFactory.CreateAsync();

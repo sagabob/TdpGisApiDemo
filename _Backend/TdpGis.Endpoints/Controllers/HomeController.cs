@@ -117,6 +117,9 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
         [Bind(Prefix = "AssignEntitiesForm")] AssignEntitiesWorkspaceFormViewModel model,
         CancellationToken cancellationToken)
     {
+        model.SelectedConnectionIds ??= [];
+        model.IsSelectionPostback = true;
+
         if (!ModelState.IsValid)
         {
             var pageModel = BuildPageModel();
@@ -124,7 +127,7 @@ public class HomeController(IGisAdminAppService gisAdmin, IConfiguration configu
             return View("Index", pageModel);
         }
 
-        var input = new AssignEntitiesInput(model.WorkspaceId, model.SelectedConnectionIds ?? []);
+        var input = new AssignEntitiesInput(model.WorkspaceId, model.SelectedConnectionIds);
         var result = await gisAdmin.AssignEntitiesToWorkspaceAsync(input, cancellationToken);
         if (!result.IsSuccess)
         {

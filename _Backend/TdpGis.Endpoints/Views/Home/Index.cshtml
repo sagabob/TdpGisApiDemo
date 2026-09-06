@@ -58,8 +58,9 @@
     }
 }
 
+<div class="gis-config-panel mx-auto">
 <div class="row g-4">
-<div class="@(canManage ? "col-lg-8" : "col-lg-12")">
+<div class="col-12">
 <h1 class="h3">GIS Configuration</h1>
 @if (canManage)
 {
@@ -105,14 +106,13 @@ else
                 <th scope="col">Name</th>
                 <th scope="col">Type</th>
                 <th scope="col">Connection string</th>
-                <th scope="col">Data source id</th>
             </tr>
             </thead>
             <tbody>
             @if (Model.SavedDataSources.Count == 0)
             {
                 <tr>
-                    <td colspan="4" class="text-muted">None</td>
+                    <td colspan="3" class="text-muted">None</td>
                 </tr>
             }
             else
@@ -123,7 +123,6 @@ else
                         <td>@(string.IsNullOrWhiteSpace(ds.Name) ? "—" : ds.Name)</td>
                         <td>@ds.DatabaseType.ToDisplayName()</td>
                         <td class="small">@MaskConnectionString(ds.ConnectionString)</td>
-                        <td class="text-nowrap font-monospace small">@ds.Id</td>
                     </tr>
                 }
             }
@@ -507,8 +506,8 @@ else
 
         <hr class="my-4"/>
 
-        <h2 class="h6 mb-2">Add GIS entities to workspace</h2>
-        <p class="text-muted small">Assign existing GIS connections (entities) to a workspace. Choosing a workspace checks entities already linked to it; you can change the selection before saving.</p>
+        <h2 class="h6 mb-2">GIS entities for workspace</h2>
+        <p class="text-muted small">Select a workspace, then tick entities on or off. Each entity belongs to at most one workspace — ticking one on moves it here; ticking off clears its workspace link.</p>
         <form asp-action="AssignEntitiesToWorkspace" method="post">
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
@@ -530,14 +529,14 @@ else
             else
             {
                 var assignForm = Model.AssignEntitiesForm;
-                var postedIds = assignForm.SelectedConnectionIds;
-                var usePostedSelection = postedIds != null && postedIds.Count > 0;
+                var postedIds = assignForm.SelectedConnectionIds ?? [];
+                var usePostedSelection = assignForm.IsSelectionPostback;
                 <div class="mb-2">GIS entities</div>
                 <div id="assignEntitiesCheckboxList" class="border rounded p-3 mb-3" style="max-height: 220px; overflow-y: auto;">
                     @foreach (var c in Model.ExistingConnections)
                     {
                         var isChecked = usePostedSelection
-                            ? postedIds!.Contains(c.Id)
+                            ? postedIds.Contains(c.Id)
                             : assignForm.WorkspaceId != Guid.Empty && c.GisWorkspaceId == assignForm.WorkspaceId;
                         <div class="form-check">
                             <input class="form-check-input assign-entity-cb"
@@ -549,12 +548,18 @@ else
                                    @(isChecked ? "checked" : null)/>
                             <label class="form-check-label" for="conn_@c.Id">
                                 @c.Name <span class="text-muted">(@c.Entity)</span>
+                                @if (c.GisWorkspaceId is { } linkedWs &&
+                                     (assignForm.WorkspaceId == Guid.Empty || linkedWs != assignForm.WorkspaceId))
+                                {
+                                    var otherName = Model.Workspaces.FirstOrDefault(w => w.Id == linkedWs)?.Name;
+                                    <span class="badge text-bg-secondary ms-1">@(otherName ?? "other workspace")</span>
+                                }
                             </label>
                         </div>
                     }
                 </div>
                 <span asp-validation-for="AssignEntitiesForm.SelectedConnectionIds" class="text-danger d-block"></span>
-                <button type="submit" class="btn btn-outline-primary">Add selected to workspace</button>
+                <button type="submit" class="btn btn-outline-primary" id="updateWorkspaceEntitySelectionBtn" disabled>Update the selection</button>
             }
         </form>
 
@@ -733,38 +738,9 @@ else
     </div>
 }
 </div>
-</div>
 
-@if (canManage)
-{
-    <div class="col-lg-4">
-        <h2 class="h5">Configured Entities</h2>
-        @if (Model.ExistingConnections.Count == 0)
-        {
-            <p class="text-muted">No entities configured yet.</p>
-        }
-        else
-        {
-            <div class="list-group">
-                @foreach (var item in Model.ExistingConnections)
-                {
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between">
-                            <strong>@item.Name</strong>
-                            <span class="badge text-bg-secondary">@item.GeometryType</span>
-                        </div>
-                        <div class="small text-muted">@item.EntityLabel (@item.Entity)</div>
-                        <div class="small mt-1">Query field: @item.QueryField</div>
-                        @if (item.GisWorkspace != null)
-                        {
-                            <div class="small mt-1">Workspace: <span class="text-dark">@item.GisWorkspace.Name</span></div>
-                        }
-                    </div>
-                }
-            </div>
-        }
-    </div>
-}
+</div>
+</div>
 </div>
 
 @section Scripts {
@@ -1185,12 +1161,16 @@ else
 
             const assignEntitiesWorkspaceSelect = document.getElementById('assignEntitiesWorkspaceSelect');
             const assignEntitiesCheckboxList = document.getElementById('assignEntitiesCheckboxList');
+            const updateWorkspaceEntitySelectionBtn = document.getElementById('updateWorkspaceEntitySelectionBtn');
 
             function syncAssignEntityCheckboxesToWorkspace() {
                 if (!assignEntitiesWorkspaceSelect || !assignEntitiesCheckboxList) {
                     return;
                 }
                 const ws = assignEntitiesWorkspaceSelect.value || '';
+                if (updateWorkspaceEntitySelectionBtn) {
+                    updateWorkspaceEntitySelectionBtn.disabled = ws === '';
+                }
                 assignEntitiesCheckboxList.querySelectorAll('input.assign-entity-cb').forEach(function (cb) {
                     const entityWs = cb.getAttribute('data-entity-workspace') || '';
                     cb.checked = ws !== '' && entityWs === ws;
@@ -1199,6 +1179,9 @@ else
 
             if (assignEntitiesWorkspaceSelect && assignEntitiesCheckboxList) {
                 assignEntitiesWorkspaceSelect.addEventListener('change', syncAssignEntityCheckboxesToWorkspace);
+                if (updateWorkspaceEntitySelectionBtn) {
+                    updateWorkspaceEntitySelectionBtn.disabled = !assignEntitiesWorkspaceSelect.value;
+                }
             }
 
             function showAllTokenViewRows() {

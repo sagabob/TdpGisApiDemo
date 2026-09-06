@@ -62,6 +62,9 @@ public class AssignEntitiesWorkspaceFormViewModel
     public Guid WorkspaceId { get; set; }
 
     public List<Guid> SelectedConnectionIds { get; set; } = [];
+
+    /// <summary>True when redisplaying after a POST so an empty checkbox set is preserved.</summary>
+    public bool IsSelectionPostback { get; set; }
 }
 
 public class AccessTokenFormViewModel

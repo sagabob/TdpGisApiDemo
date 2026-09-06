@@ -277,24 +277,36 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
         return token;
     }
 
+    /// <summary>
+    ///     Syncs membership for one workspace: selected entities are assigned;
+    ///     entities currently on this workspace but not selected are cleared.
+    ///     Entities on other workspaces are left alone unless selected (then moved here).
+    /// </summary>
+    /// <returns>Number of entities assigned to the workspace after sync.</returns>
     public async Task<int> SetConnectionsWorkspaceAsync(
         Guid workspaceId,
         IReadOnlyList<Guid> connectionIds,
         CancellationToken cancellationToken = default)
     {
-        if (connectionIds.Count == 0) return 0;
-
         var workspaceExists = await dbContext.GisWorkspaces.AnyAsync(w => w.Id == workspaceId, cancellationToken);
         if (!workspaceExists) throw new InvalidOperationException("Workspace was not found.");
 
+        var selected = connectionIds.Distinct().ToHashSet();
+
         var connections = await dbContext.GisConnections
-            .Where(c => connectionIds.Contains(c.Id))
+            .Where(c => selected.Contains(c.Id) || c.GisWorkspaceId == workspaceId)
             .ToListAsync(cancellationToken);
 
-        foreach (var conn in connections) conn.GisWorkspaceId = workspaceId;
+        foreach (var conn in connections)
+        {
+            if (selected.Contains(conn.Id))
+                conn.GisWorkspaceId = workspaceId;
+            else if (conn.GisWorkspaceId == workspaceId)
+                conn.GisWorkspaceId = null;
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return connections.Count;
+        return connections.Count(c => c.GisWorkspaceId == workspaceId);
     }
 
     private static string GenerateOpaqueToken()

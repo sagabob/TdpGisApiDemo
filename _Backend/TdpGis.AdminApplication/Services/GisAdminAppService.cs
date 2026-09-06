@@ -168,18 +168,15 @@ public sealed class GisAdminAppService(
     {
         var result = new FormActionResult();
         var ids = input.SelectedConnectionIds ?? [];
-        if (ids.Count == 0)
-            result.AddFieldError(nameof(AssignEntitiesInput.SelectedConnectionIds),
-                "Select at least one GIS entity to add to the workspace.");
-
-        if (!result.IsSuccess) return result;
 
         try
         {
-            var updated = await repository.SetConnectionsWorkspaceAsync(input.WorkspaceId, ids, cancellationToken);
-            result.SuccessMessage = updated == 1
-                ? "Assigned 1 GIS entity to the workspace."
-                : $"Assigned {updated} GIS entities to the workspace.";
+            var assigned = await repository.SetConnectionsWorkspaceAsync(input.WorkspaceId, ids, cancellationToken);
+            result.SuccessMessage = assigned == 0
+                ? "Updated the selection: no GIS entities are linked to this workspace."
+                : assigned == 1
+                    ? "Updated the selection: 1 GIS entity linked to this workspace."
+                    : $"Updated the selection: {assigned} GIS entities linked to this workspace.";
             return result;
         }
         catch (InvalidOperationException ex)
