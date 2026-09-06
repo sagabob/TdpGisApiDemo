@@ -20,6 +20,7 @@ import { mapboxAccessToken } from '@/config/gis-config';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import SearchContext from '@/contexts/SearchContext';
 import { GisMapSearchMarkers } from '@/components/maps/GisMapSearchMarkers';
+import { GisMapSearchPolygons } from '@/components/maps/GisMapSearchPolygons';
 import { GisMapSelectedOverlay } from '@/components/maps/GisMapSelectedOverlay';
 
 export const GisMap = () => {
@@ -93,6 +94,12 @@ export const GisMap = () => {
         onLoad={handleLoad}
         onMoveEnd={handleMoveEnd}
       >
+        {/* Polygon footprints under pins — see `GisMapSearchPolygons`. */}
+        <GisMapSearchPolygons
+          results={results}
+          selectedId={selectedGeo?.Id ?? null}
+          onSelect={setSelectedGeo}
+        />
         {/* Hit markers are split out and memoized — see `GisMapSearchMarkers`. */}
         <GisMapSearchMarkers
           results={results}

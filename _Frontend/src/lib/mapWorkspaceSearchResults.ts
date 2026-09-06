@@ -1,4 +1,4 @@
-import type { GeoFeature } from '@/contexts/SearchContext';
+import type { AreaGeometry, GeoFeature } from '@/contexts/SearchContext';
 import type { GisConnectionDto } from '@/types/gisWorkspace';
 
 export type WorkspaceSearchApiResponse = {
@@ -141,6 +141,173 @@ function geometryForMap(lng: number, lat: number): GeoFeature['geometry'] {
   };
 }
 
+function stripSridPrefix(wkt: string): string {
+  return wkt.replace(/^SRID\s*=\s*\d+\s*;\s*/i, '').trim();
+}
+
+function parseWktRing(ringText: string): number[][] | null {
+  const pairs = ringText.match(
+    /[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\s+[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g,
+  );
+  if (!pairs || pairs.length < 3) return null;
+  const ring: number[][] = [];
+  for (const pair of pairs) {
+    const parts = pair.trim().split(/\s+/);
+    const lng = Number(parts[0]);
+    const lat = Number(parts[1]);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+    ring.push([lng, lat]);
+  }
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  if (first[0] !== last[0] || first[1] !== last[1]) {
+    ring.push([first[0], first[1]]);
+  }
+  return ring.length >= 4 ? ring : null;
+}
+
+function parseWktPolygonBody(body: string): number[][][] | null {
+  const raw = body.trim();
+  const groups: string[] = [];
+  const groupRe = /\(([^()]*)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = groupRe.exec(raw)) !== null) {
+    groups.push(m[1]);
+  }
+  const rings: number[][][] = [];
+  for (const text of groups) {
+    const ring = parseWktRing(text);
+    if (ring) rings.push(ring);
+  }
+  return rings.length > 0 ? rings : null;
+}
+
+/**
+ * Parse WKT POLYGON / MULTIPOLYGON into GeoJSON coordinates.
+ * Supports typical PostGIS text like `POLYGON((lng lat, ...))`.
+ */
+function parseWktAreaGeometry(wkt: string): AreaGeometry | null {
+  const s = stripSridPrefix(wkt);
+  const multi = /^MULTIPOLYGON\s*\(/i.exec(s);
+  if (multi) {
+    const polygons: number[][][][] = [];
+    const inner = s.slice(multi[0].length - 1);
+    let depth = 0;
+    let start = -1;
+    for (let i = 0; i < inner.length; i++) {
+      const ch = inner[i];
+      if (ch === '(') {
+        depth++;
+        if (depth === 2 && start < 0) start = i;
+      } else if (ch === ')') {
+        if (depth === 2 && start >= 0) {
+          const chunk = inner.slice(start, i + 1);
+          const rings = parseWktPolygonBody(chunk);
+          if (rings) polygons.push(rings);
+          start = -1;
+        }
+        depth--;
+      }
+    }
+    return polygons.length > 0 ? { type: 'MultiPolygon', coordinates: polygons } : null;
+  }
+
+  const poly = /^POLYGON\s*\(/i.exec(s);
+  if (poly) {
+    const body = s.slice(poly[0].length - 1);
+    const rings = parseWktPolygonBody(body);
+    return rings ? { type: 'Polygon', coordinates: rings } : null;
+  }
+
+  return null;
+}
+
+function isNumericPair(v: unknown): v is [number, number] {
+  return Array.isArray(v) && typeof v[0] === 'number' && typeof v[1] === 'number';
+}
+
+function looksLikeRing(v: unknown): v is number[][] {
+  return Array.isArray(v) && v.length >= 3 && isNumericPair(v[0]);
+}
+
+function looksLikePolygonCoords(v: unknown): v is number[][][] {
+  return Array.isArray(v) && v.length > 0 && looksLikeRing(v[0]);
+}
+
+function looksLikeMultiPolygonCoords(v: unknown): v is number[][][][] {
+  return Array.isArray(v) && v.length > 0 && looksLikePolygonCoords(v[0]);
+}
+
+function parseGeoJsonAreaGeometry(value: unknown): AreaGeometry | null {
+  if (!value || typeof value !== 'object') return null;
+  const g = value as { type?: string; coordinates?: unknown };
+  const t = g.type?.toLowerCase();
+  if (t === 'polygon' && looksLikePolygonCoords(g.coordinates)) {
+    return { type: 'Polygon', coordinates: g.coordinates };
+  }
+  if (t === 'multipolygon' && looksLikeMultiPolygonCoords(g.coordinates)) {
+    return { type: 'MultiPolygon', coordinates: g.coordinates };
+  }
+  if (!t && looksLikeMultiPolygonCoords(g.coordinates)) {
+    return { type: 'MultiPolygon', coordinates: g.coordinates };
+  }
+  if (!t && looksLikePolygonCoords(g.coordinates)) {
+    return { type: 'Polygon', coordinates: g.coordinates };
+  }
+  return null;
+}
+
+function toAreaGeometry(value: unknown): AreaGeometry | null {
+  if (typeof value === 'string') {
+    return parseWktAreaGeometry(value);
+  }
+  return parseGeoJsonAreaGeometry(value);
+}
+
+const AREA_PROPERTY_NAMES = new Set([
+  'geom',
+  'geometry',
+  'shape',
+  'wkt',
+  'the_geom',
+  'wkb_geometry',
+  'geog',
+  'geography',
+]);
+
+function extractAreaGeometry(
+  row: Record<string, unknown>,
+  entity: GisConnectionDto,
+): AreaGeometry | null {
+  const candidates: unknown[] = [];
+
+  for (const m of entity.propertyMappings) {
+    const name = m.propertyName.toLowerCase();
+    if (name === 'center_point') continue;
+    if (AREA_PROPERTY_NAMES.has(name) || name.includes('geom') || name.includes('polygon')) {
+      if (row[m.propertyLabel] !== undefined) candidates.push(row[m.propertyLabel]);
+    }
+  }
+
+  for (const key of Object.keys(row)) {
+    if (AREA_PROPERTY_NAMES.has(key.toLowerCase())) {
+      candidates.push(row[key]);
+    }
+  }
+
+  for (const m of entity.propertyMappings) {
+    if (m.columnType !== 1) continue;
+    if (m.propertyName.toLowerCase() === 'center_point') continue;
+    if (row[m.propertyLabel] !== undefined) candidates.push(row[m.propertyLabel]);
+  }
+
+  for (const v of candidates) {
+    const area = toAreaGeometry(v);
+    if (area) return area;
+  }
+  return null;
+}
+
 /**
  * Geometry / pin fields must not appear in dropdown or popup text (`placeName` / `locality`).
  * Matches common property names and WKT payloads like `POINT(...)` / `POLYGON(...)`.
@@ -180,7 +347,7 @@ function isDisplayableStringField(key: string, value: unknown, excludeValue?: st
  * Maps FastEndpoints search payload (`collections` = JSON rows keyed by property labels)
  * into the shape expected by `GisMap` / dropdown (GeoJSON-like geometry with legacy coordinate access).
  *
- * Polygon / MultiPolygon entities: pin from `center_point` when present; otherwise fall back to geometry.
+ * Polygon / MultiPolygon entities: pin from `center_point` when present; `areaGeometry` from `geom` when parseable.
  */
 export function mapWorkspaceSearchCollectionsToGeoFeatures(
   data: WorkspaceSearchApiResponse,
@@ -203,6 +370,7 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
     }
   }
 
+  const polygonEntity = isPolygonEntity(entity.geometryType);
   const out: GeoFeature[] = [];
 
   rows.forEach((raw, index) => {
@@ -226,8 +394,7 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
         ? String(row[queryLabel])
         : String(
             Object.entries(row).find(
-              ([key, v]) =>
-                !hiddenLabels.has(key) && isDisplayableStringField(key, v),
+              ([key, v]) => !hiddenLabels.has(key) && isDisplayableStringField(key, v),
             )?.[1] ?? 'Result',
           );
 
@@ -239,11 +406,15 @@ export function mapWorkspaceSearchCollectionsToGeoFeatures(
           isDisplayableStringField(key, v, placeName),
       )?.[1] ?? '';
 
+    const areaGeometry = polygonEntity ? extractAreaGeometry(row, entity) ?? undefined : undefined;
+
     out.push({
       Id: `${sourceEntityId}:${idBase}`,
       placeName,
       locality: typeof otherString === 'string' ? otherString : '',
       geometry: geometryForMap(ll[0], ll[1]),
+      geometryKind: polygonEntity ? 'polygon' : 'point',
+      ...(areaGeometry ? { areaGeometry } : {}),
       sourceEntityId,
       sourceEntityLabel: entity.entityLabel?.trim() || entity.name?.trim() || entity.entity,
     });
