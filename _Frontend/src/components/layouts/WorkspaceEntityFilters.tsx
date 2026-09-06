@@ -23,13 +23,13 @@ function LockIcon({ className }: { className?: string }) {
 
 function EntitySearchLoadingButton({ label }: { label: string }) {
   return (
-    <div className="relative z-[1] w-full">
+    <div className="relative z-1 w-full">
       <button
         type="button"
         disabled
         aria-busy="true"
         aria-label={label}
-        className="box-border flex h-[42px] w-full cursor-wait items-center justify-center rounded-md border-2 border-solid border-slate-300 bg-white px-2 text-sm shadow-md outline-none ring-0 disabled:cursor-wait disabled:opacity-100"
+        className="box-border flex h-10.5 w-full cursor-wait items-center justify-center rounded-md border-2 border-solid border-slate-300 bg-white px-2 text-sm shadow-md outline-none ring-0 disabled:cursor-wait disabled:opacity-100"
       >
       <svg
         className="h-5 w-5 shrink-0 animate-spin text-blue-600"
@@ -90,7 +90,7 @@ export function WorkspaceEntityFilters() {
         type="button"
         disabled
         title={workspaceEntitiesError}
-        className="h-[42px] w-full rounded-md border border-dashed border-amber-300 bg-amber-50 px-2 text-xs text-amber-900"
+        className="h-10.5 w-full rounded-md border border-dashed border-amber-300 bg-amber-50 px-2 text-xs text-amber-900"
       >
         Entities unavailable
       </button>
@@ -102,7 +102,7 @@ export function WorkspaceEntityFilters() {
       <button
         type="button"
         disabled
-        className="h-[42px] w-full rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 text-xs text-slate-600"
+        className="h-10.5 w-full rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 text-xs text-slate-600"
       >
         No entities
       </button>
@@ -122,7 +122,7 @@ export function WorkspaceEntityFilters() {
         title="Search in entities"
         aria-label={`Entities: ${selected} of ${total} selected. Open to change.`}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-[42px] w-full min-w-0 items-center justify-center gap-1 rounded-md border border-solid border-gray-300 bg-white px-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+        className="flex h-10.5 w-full min-w-0 items-center justify-center gap-1 rounded-md border border-solid border-gray-300 bg-white px-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
       >
         <span className="min-w-0 truncate text-xs sm:text-sm">Entities</span>
         <span className="shrink-0 rounded bg-slate-100 px-1 py-0.5 text-xs tabular-nums text-slate-600">
@@ -143,7 +143,7 @@ export function WorkspaceEntityFilters() {
         <div
           id="workspace-entity-listbox"
           role="listbox"
-          className="absolute right-0 top-[calc(100%+6px)] z-[60] w-[min(18rem,calc(100vw-1.5rem))] rounded-md border border-slate-200 bg-white py-2 shadow-xl"
+          className="absolute right-0 top-[calc(100%+6px)] z-60 w-[min(18rem,calc(100vw-1.5rem))] rounded-md border border-slate-200 bg-white py-2 shadow-xl"
         >
           <p className="border-b border-slate-100 px-3 pb-2 text-xs font-medium text-slate-600">
             Search in entities

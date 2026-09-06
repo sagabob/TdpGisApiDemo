@@ -14,7 +14,7 @@ const SearchBar = () => {
     return (
         <>
             <div className="fixed top-4 left-3 right-3 z-40 sm:left-6 sm:right-6 md:left-10 md:right-10">
-                <div className="w-full max-w-[560px]">
+                <div className="w-full max-w-140">
                     <div className="flex flex-row items-start gap-2">
                         <div className="relative min-w-0 flex-1">
                             <SimpleSearchComponent {...searchInput} />
@@ -24,7 +24,7 @@ const SearchBar = () => {
                           Fixed slot for the Entities control so the search field width does not jump
                           when the list loads (same layout as when the button is already visible).
                         */}
-                        <div className="flex w-[168px] shrink-0 flex-col items-stretch justify-start">
+                        <div className="flex w-42 shrink-0 flex-col items-stretch justify-start">
                             <WorkspaceEntityFilters />
                         </div>
                     </div>

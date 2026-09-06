@@ -33,7 +33,7 @@ export function AuthLoginButton() {
   if (session === 'loading') {
     return (
       <div
-        className={`${btnClassName} min-w-[148px] cursor-default border-slate-200 bg-slate-100 text-transparent shadow-sm animate-pulse`}
+        className={`${btnClassName} min-w-37 cursor-default border-slate-200 bg-slate-100 text-transparent shadow-sm animate-pulse`}
         aria-hidden
       >
         <span className="inline-block h-5 w-5 rounded-sm bg-slate-200" />
