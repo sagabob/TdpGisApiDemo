@@ -210,6 +210,10 @@ module apiApp 'modules/containerApp.bicep' = {
         name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
         value: applicationInsights.outputs.connectionString
       }
+      {
+        name: 'ApplicationInsights__ConnectionString'
+        value: applicationInsights.outputs.connectionString
+      }
     ]
   }
 }
@@ -269,6 +273,10 @@ module endpointsApp 'modules/containerApp.bicep' = {
       }
       {
         name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: applicationInsights.outputs.connectionString
+      }
+      {
+        name: 'ApplicationInsights__ConnectionString'
         value: applicationInsights.outputs.connectionString
       }
     ]

@@ -15,9 +15,9 @@ public static class TelemetryExtensions
 
     public static WebApplicationBuilder AddTdpGisApiTelemetry(this WebApplicationBuilder builder)
     {
-        var connectionString =
-            builder.Configuration[ConnectionStringConfigKey]
-            ?? Environment.GetEnvironmentVariable(ConnectionStringEnvVar);
+        var connectionString = builder.Configuration[ConnectionStringConfigKey];
+        if (string.IsNullOrWhiteSpace(connectionString))
+            connectionString = Environment.GetEnvironmentVariable(ConnectionStringEnvVar);
 
         if (string.IsNullOrWhiteSpace(connectionString))
             return builder;
