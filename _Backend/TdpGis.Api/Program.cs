@@ -13,6 +13,7 @@ using TdpGis.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddTdpGisApiTelemetry();
 builder.Services.AddTdpGisApiForwardedHeaders();
 builder.Services.AddTdpGisApiCors();
 builder.Services.AddInfrastructure(builder.Configuration);

@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TdpGis.Application.Abstractions;
 using TdpGis.Application.Common;
@@ -11,10 +12,15 @@ namespace TdpGis.Application.Tests.UseCases;
 
 public class SearchGisEntityUseCaseTests
 {
+    private static SearchGisEntityUseCase CreateSut(
+        IGisConfigurationService configuration,
+        IGisDataService data) =>
+        new(configuration, data, NullLogger<SearchGisEntityUseCase>.Instance);
+
     [Fact]
     public async Task ExecuteAsync_returns_missing_token_failure_when_access_token_missing()
     {
-        var sut = new SearchGisEntityUseCase(
+        var sut = CreateSut(
             Mock.Of<IGisConfigurationService>(),
             Mock.Of<IGisDataService>());
 
@@ -42,7 +48,7 @@ public class SearchGisEntityUseCaseTests
             .Setup(c => c.GetValidWorkspaceAccessTokenAsync(workspaceId, "bad", It.IsAny<CancellationToken>()))
             .ReturnsAsync((GisWorkspaceAccessToken?)null);
 
-        var sut = new SearchGisEntityUseCase(configuration.Object, Mock.Of<IGisDataService>());
+        var sut = CreateSut(configuration.Object, Mock.Of<IGisDataService>());
 
         var result = await sut.ExecuteAsync(
             new SearchGisEntityQuery
@@ -83,7 +89,7 @@ public class SearchGisEntityUseCaseTests
             .Setup(c => c.GetGisConnectionForQueryAsync(workspaceId, entityId))
             .ReturnsAsync((GisConnection?)null);
 
-        var sut = new SearchGisEntityUseCase(configuration.Object, Mock.Of<IGisDataService>());
+        var sut = CreateSut(configuration.Object, Mock.Of<IGisDataService>());
 
         var result = await sut.ExecuteAsync(
             new SearchGisEntityQuery
@@ -149,7 +155,7 @@ public class SearchGisEntityUseCaseTests
         data.Setup(d => d.GetSearchedInstances(entity, phrase, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync([new JsonObject { ["placeName"] = "Botanic Garden" }]);
 
-        var sut = new SearchGisEntityUseCase(configuration.Object, data.Object);
+        var sut = CreateSut(configuration.Object, data.Object);
 
         var result = await sut.ExecuteAsync(
             new SearchGisEntityQuery
@@ -215,7 +221,7 @@ public class SearchGisEntityUseCaseTests
             .Setup(c => c.GetGisConnectionForQueryAsync(workspaceId, entityId))
             .ReturnsAsync(entity);
 
-        var sut = new SearchGisEntityUseCase(configuration.Object, Mock.Of<IGisDataService>(MockBehavior.Strict));
+        var sut = CreateSut(configuration.Object, Mock.Of<IGisDataService>(MockBehavior.Strict));
 
         var result = await sut.ExecuteAsync(
             new SearchGisEntityQuery
@@ -280,7 +286,7 @@ public class SearchGisEntityUseCaseTests
         data.Setup(d => d.GetSearchedInstances(entity, "park", 10, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("boom"));
 
-        var sut = new SearchGisEntityUseCase(configuration.Object, data.Object);
+        var sut = CreateSut(configuration.Object, data.Object);
 
         var result = await sut.ExecuteAsync(
             new SearchGisEntityQuery

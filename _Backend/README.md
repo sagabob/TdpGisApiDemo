@@ -23,7 +23,7 @@ Endpoint (Api) → UseCase (Application) → Ports (interfaces) → Adapters (In
 | `TdpGis.Endpoints` | Admin UI, Entra OIDC cookie, roles `Gis.Admin` / `Gis.Viewer` |
 | `TdpGis.Application` | Use cases + ports; shared guards and failure kinds |
 | `TdpGis.AdminApplication` | Admin abstractions (metadata probes, etc.) |
-| `TdpGis.Infrastructure` | Adapters: EF, Mongo/SQL; DI registers ports **and** use cases |
+| `TdpGis.Infrastructure` | Adapters: EF, Mongo/SQL; DI registers port implementations |
 | `TdpGis.Domain` | Entities (`GisConnection`, `DataSourceSetting`, workspaces, tokens) |
 
 ### Use cases (Application)
@@ -63,6 +63,15 @@ When starting a new API project, ask the agent to follow the **dotnet-clean-arch
 - EF Core + PostgreSQL (app/config DB)
 - MongoDB, PostgreSQL, SQL Server (GIS entity data)
 - xunit.v3 + Microsoft.Testing.Platform (`global.json`)
+
+## Logging and Application Insights
+
+Hosts use standard `ILogger<T>` (structured templates in GIS use cases). Azure Monitor OpenTelemetry is registered **only when** a connection string is set:
+
+- Env: `APPLICATIONINSIGHTS_CONNECTION_STRING` (set by `Backend_Infra` on Container Apps)
+- Or config: `ApplicationInsights:ConnectionString` (user-secrets for local trials)
+
+Without a connection string, local runs keep console logging only. See `Backend_Infra/README.md` → **Application Insights**.
 
 ## Prerequisites
 

@@ -9,10 +9,13 @@ using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using TdpGis.AdminApplication.DependencyInjection;
 using TdpGis.Application.Security;
+using TdpGis.Endpoints.Hosting;
 using TdpGis.Infrastructure.DependencyInjection;
 using TdpGis.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddTdpGisEndpointsTelemetry();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {

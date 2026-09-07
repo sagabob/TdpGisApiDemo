@@ -46,6 +46,7 @@ param endpointsMaxReplicas int = 3
 
 var resourceSuffix = '${namePrefix}-${environmentName}'
 var logAnalyticsName = 'log-${resourceSuffix}'
+var appInsightsName = 'appi-${resourceSuffix}'
 var environmentResourceName = 'cae-${resourceSuffix}'
 var apiAppName = 'ca-${namePrefix}-api-${environmentName}'
 var endpointsAppName = 'ca-${namePrefix}-admin-${environmentName}'
@@ -139,6 +140,16 @@ module logAnalytics 'modules/logAnalytics.bicep' = {
   }
 }
 
+module applicationInsights 'modules/applicationInsights.bicep' = {
+  name: 'applicationInsights'
+  params: {
+    name: appInsightsName
+    location: location
+    tags: tags
+    workspaceResourceId: logAnalytics.outputs.id
+  }
+}
+
 module containerAppsEnvironment 'modules/containerAppsEnvironment.bicep' = {
   name: 'containerAppsEnvironment'
   params: {
@@ -194,6 +205,10 @@ module apiApp 'modules/containerApp.bicep' = {
       {
         name: 'AzureAd__Instance'
         value: azureAdInstance
+      }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: applicationInsights.outputs.connectionString
       }
     ]
   }
@@ -252,6 +267,10 @@ module endpointsApp 'modules/containerApp.bicep' = {
         name: 'AzureAd__Instance'
         value: azureAdInstance
       }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: applicationInsights.outputs.connectionString
+      }
     ]
   }
 }
@@ -261,6 +280,8 @@ output keyVaultUri string = keyVault.properties.vaultUri
 output appsIdentityNameOut string = appsIdentity.name
 output containerAppsEnvironmentName string = containerAppsEnvironment.outputs.name
 output containerAppsEnvironmentDefaultDomain string = containerAppsEnvironment.outputs.defaultDomain
+output applicationInsightsName string = applicationInsights.outputs.name
+output applicationInsightsConnectionString string = applicationInsights.outputs.connectionString
 output apiFqdn string = apiApp.outputs.fqdn
 output apiUrl string = 'https://${apiApp.outputs.fqdn}'
 output endpointsFqdn string = endpointsApp.outputs.fqdn

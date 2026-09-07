@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TdpGis.Application.Abstractions;
 using TdpGis.Application.AppModels;
@@ -14,7 +15,9 @@ public class GetGisWorkspaceEntitiesUseCaseTests
     [Fact]
     public async Task ExecuteAsync_returns_missing_token_when_header_absent()
     {
-        var sut = new GetGisWorkspaceEntitiesUseCase(Mock.Of<IGisConfigurationService>());
+        var sut = new GetGisWorkspaceEntitiesUseCase(
+            Mock.Of<IGisConfigurationService>(),
+            NullLogger<GetGisWorkspaceEntitiesUseCase>.Instance);
 
         var result = await sut.ExecuteAsync(
             new GetGisWorkspaceEntitiesQuery
@@ -66,7 +69,9 @@ public class GetGisWorkspaceEntitiesUseCaseTests
             .Setup(c => c.GetGisConnectionDtosByWorkspaceIdAsync(workspaceId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(entities);
 
-        var sut = new GetGisWorkspaceEntitiesUseCase(configuration.Object);
+        var sut = new GetGisWorkspaceEntitiesUseCase(
+            configuration.Object,
+            NullLogger<GetGisWorkspaceEntitiesUseCase>.Instance);
 
         var result = await sut.ExecuteAsync(
             new GetGisWorkspaceEntitiesQuery

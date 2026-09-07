@@ -6,7 +6,8 @@
 |----------|------------|---------|
 | **Key Vault** | `bootstrap.bicep` | Store of record for secrets and the DB connection |
 | User-assigned identity | `bootstrap.bicep` | Container Apps read Key Vault (RBAC) |
-| Log Analytics workspace | `main.bicep` | Container Apps logs |
+| Log Analytics workspace | `main.bicep` | Container Apps platform logs + App Insights backend |
+| **Application Insights** | `main.bicep` | App telemetry (requests, dependencies, exceptions, `ILogger`) |
 | Container Apps Environment | `main.bicep` | Shared hosting environment |
 | Container App `ca-*-api-*` | `main.bicep` | `TdpGis.Api` |
 | Container App `ca-*-admin-*` | `main.bicep` | `TdpGis.Endpoints` |
@@ -116,3 +117,39 @@ Then hit `apiUrl` (`/swagger`) and `endpointsUrl`.
 - Secret URIs are unversioned; a new Key Vault version is picked up when the revision restarts.
 - `enablePurgeProtection=true` on bootstrap cannot be turned off later.
 - Public images: set `registryUsername` to `''` and skip `registry-password`.
+
+## Application Insights (app telemetry)
+
+`main.bicep` creates a **workspace-based** Application Insights resource (`appi-<prefix>-<env>`) linked to the Log Analytics workspace, and sets this env var on **both** Container Apps:
+
+```
+APPLICATIONINSIGHTS_CONNECTION_STRING=<connection string from App Insights>
+```
+
+### How the apps pick it up
+
+Api and Endpoints call `AddOpenTelemetry().UseAzureMonitor()` **only when** a connection string is present (`APPLICATIONINSIGHTS_CONNECTION_STRING` or `ApplicationInsights:ConnectionString`). Without it (typical local run), they use console logging only—no Azure packages required at runtime beyond the reference.
+
+| Where | What you get |
+|-------|----------------|
+| Local (no connection string) | Console / default ASP.NET Core logging |
+| Cloud (Bicep deploy) | Requests, dependencies, exceptions, and structured `ILogger` events in Application Insights |
+| Container Apps stdout | Still goes to Log Analytics via the CAE `appLogsConfiguration` (platform logs) |
+
+### Try it locally before deploy
+
+```powershell
+# From _Backend — set a real connection string from an App Insights resource
+$env:APPLICATIONINSIGHTS_CONNECTION_STRING = '<paste-from-portal>'
+dotnet run --project TdpGis.Api
+```
+
+Or user-secrets:
+
+```powershell
+dotnet user-secrets set "ApplicationInsights:ConnectionString" "<paste-from-portal>" --project TdpGis.Api
+```
+
+Then open the App Insights resource → **Live Metrics** / **Transaction search** and hit an API route.
+
+Do **not** log workspace access tokens (`X-Access-Token`), DB connection strings, or Entra client secrets.
