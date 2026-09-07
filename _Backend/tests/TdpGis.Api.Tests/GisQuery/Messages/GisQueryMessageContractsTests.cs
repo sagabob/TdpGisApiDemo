@@ -15,17 +15,24 @@ public class GisQueryMessageContractsTests
     }
 
     [Fact]
-    public void SearchGisEntityRequest_primary_constructor_assigns_route_values()
+    public void SearchGisEntityRequest_assigns_route_and_query_values()
     {
         var workspaceId = Guid.NewGuid();
         var entityId = Guid.NewGuid();
         const string searchedPhrase = "garden";
 
-        var request = new SearchGisEntityRequest(workspaceId, entityId, searchedPhrase);
+        var request = new SearchGisEntityRequest
+        {
+            WorkspaceId = workspaceId,
+            EntityId = entityId,
+            SearchedPhrase = searchedPhrase,
+            MaxResults = 25
+        };
 
         request.WorkspaceId.Should().Be(workspaceId);
         request.EntityId.Should().Be(entityId);
         request.SearchedPhrase.Should().Be(searchedPhrase);
+        request.MaxResults.Should().Be(25);
     }
 
     [Fact]

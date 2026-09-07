@@ -1,20 +1,18 @@
 using System.Security.Claims;
 
-namespace TdpGis.Endpoints.Security;
+namespace TdpGis.Application.Security;
 
 /// <summary>
 ///     Entra ID emits app roles in the <c>roles</c> claim; inbound claim mapping may also use
 ///     <see cref="ClaimTypes.Role" />.
-///     ASP.NET Core <see cref="ClaimsPrincipal.IsInRole(string)" /> only works when
-///     <see cref="ClaimsIdentity.RoleClaimType" />
-///     matches — which is easy to get wrong — so we match known role claim types explicitly.
+///     Prefer this helper over <see cref="ClaimsPrincipal.IsInRole(string)" /> when RoleClaimType may not match.
 /// </summary>
 public static class EntraAppRoleClaims
 {
     private static readonly string[] RoleClaimTypes =
     [
         "roles",
-        ClaimTypes.Role // same value as http://schemas.microsoft.com/ws/2008/06/identity/claims/role
+        ClaimTypes.Role
     ];
 
     public static bool HasRole(ClaimsPrincipal? user, string roleValue)

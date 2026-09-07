@@ -298,12 +298,10 @@ public class GisConfigurationRepository(GisAppDbContext dbContext) : IGisConfigu
             .ToListAsync(cancellationToken);
 
         foreach (var conn in connections)
-        {
             if (selected.Contains(conn.Id))
                 conn.GisWorkspaceId = workspaceId;
             else if (conn.GisWorkspaceId == workspaceId)
                 conn.GisWorkspaceId = null;
-        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return connections.Count(c => c.GisWorkspaceId == workspaceId);

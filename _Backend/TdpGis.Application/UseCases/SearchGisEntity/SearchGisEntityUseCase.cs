@@ -1,5 +1,6 @@
 using TdpGis.Application.Abstractions;
 using TdpGis.Application.Common;
+using TdpGis.Domain;
 
 namespace TdpGis.Application.UseCases.SearchGisEntity;
 
@@ -16,14 +17,14 @@ public sealed class SearchGisEntityUseCase(
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var accessFailure = await WorkspaceAccessGuard.ValidateAsync(
+        var access = await WorkspaceAccessGuard.ValidateAsync(
             configurationService,
             query.WorkspaceId,
             query.WorkspaceAccessToken,
             cancellationToken);
 
-        if (accessFailure is { } kind)
-            return SearchGisEntityResult.Failure(kind);
+        if (!access.IsValid)
+            return SearchGisEntityResult.Failure(access.FailureKind!.Value);
 
         var selectedEntity =
             await configurationService.GetGisConnectionForQueryAsync(query.WorkspaceId, query.EntityId);
@@ -31,12 +32,35 @@ public sealed class SearchGisEntityUseCase(
         if (selectedEntity is null)
             return SearchGisEntityResult.Failure(GisQueryFailureKind.EntityNotFound);
 
-        var collections = await dataService.GetSearchedInstances(
-            selectedEntity,
-            query.SearchedPhrase,
-            query.MaxResults,
-            cancellationToken);
+        if (selectedEntity.DataSource is null ||
+            !selectedEntity.DataSource.DatabaseType.IsSupportedForGisQuery())
+            return SearchGisEntityResult.Failure(GisQueryFailureKind.UnsupportedDataSourceType);
 
-        return SearchGisEntityResult.Success(query.SearchedPhrase, query.EntityId, collections);
+        try
+        {
+            var collections = await dataService.GetSearchedInstances(
+                selectedEntity,
+                query.SearchedPhrase,
+                SearchGisEntityLimits.Clamp(query.MaxResults),
+                cancellationToken);
+
+            return SearchGisEntityResult.Success(
+                query.SearchedPhrase,
+                query.EntityId,
+                collections,
+                access.Token!.IsPublic);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (NotSupportedException)
+        {
+            return SearchGisEntityResult.Failure(GisQueryFailureKind.UnsupportedDataSourceType);
+        }
+        catch (Exception)
+        {
+            return SearchGisEntityResult.Failure(GisQueryFailureKind.DataSourceQueryFailed);
+        }
     }
 }

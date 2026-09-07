@@ -15,13 +15,17 @@ public sealed class GetGisWorkspaceEntitiesResult
     public GisQueryFailureKind? FailureKind { get; private init; }
     public string? ErrorMessage { get; private init; }
     public List<GisConnectionDto>? Entities { get; private init; }
+    public bool WorkspaceTokenIsPublic { get; private init; }
 
-    public static GetGisWorkspaceEntitiesResult Success(List<GisConnectionDto> entities)
+    public static GetGisWorkspaceEntitiesResult Success(
+        List<GisConnectionDto> entities,
+        bool workspaceTokenIsPublic)
     {
         return new GetGisWorkspaceEntitiesResult
         {
             Succeeded = true,
-            Entities = entities
+            Entities = entities,
+            WorkspaceTokenIsPublic = workspaceTokenIsPublic
         };
     }
 

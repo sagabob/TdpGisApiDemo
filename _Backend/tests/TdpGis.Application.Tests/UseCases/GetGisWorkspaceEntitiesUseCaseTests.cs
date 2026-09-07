@@ -77,6 +77,7 @@ public class GetGisWorkspaceEntitiesUseCaseTests
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
+        result.WorkspaceTokenIsPublic.Should().BeFalse();
         result.Entities.Should().BeEquivalentTo(entities);
     }
 }

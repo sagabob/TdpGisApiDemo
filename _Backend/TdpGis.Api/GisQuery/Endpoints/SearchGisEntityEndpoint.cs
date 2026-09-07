@@ -19,7 +19,8 @@ public sealed class SearchGisEntityEndpoint(ISearchGisEntityUseCase searchGisEnt
             s.Summary =
                 "Phrase query: returns mapped GIS rows for an entity where QueryField matches the search phrase.";
             s.Description =
-                $"Path: `workspaceId`, `entityId`, `searchedPhrase`. One of the GIS query operations (others such as spatial search may be added later). Send `Authorization: Bearer` (Entra) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
+                $"Path: `workspaceId`, `entityId`, `searchedPhrase`. Optional query `maxResults` (default {SearchGisEntityLimits.DefaultMaxResults}, max {SearchGisEntityLimits.AbsoluteMaxResults}). Send `Authorization: Bearer` (Entra) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
+            s.Params["maxResults"] = "Optional max rows to return (1–100).";
         });
     }
 
@@ -32,25 +33,25 @@ public sealed class SearchGisEntityEndpoint(ISearchGisEntityUseCase searchGisEnt
                 EntityId = req.EntityId,
                 SearchedPhrase = req.SearchedPhrase,
                 WorkspaceAccessToken = GisWorkspaceAccess.ResolveAccessToken(HttpContext.Request),
-                MaxResults = 10
+                MaxResults = SearchGisEntityLimits.Clamp(req.MaxResults)
             },
             ct);
 
         if (!result.Succeeded)
         {
-            await HttpContext.Response.SendAsync(
-                new ApiMessageResponse { Message = result.ErrorMessage! },
-                GisQueryHttp.StatusCode(result.FailureKind!.Value),
-                cancellation: ct);
+            await HttpContext.SendGisQueryFailureAsync(result.ErrorMessage!, result.FailureKind!.Value, ct);
             return;
         }
+
+        HttpContext.SetWorkspaceTokenPublicHeader(result.WorkspaceTokenIsPublic);
 
         await Send.OkAsync(
             new SearchGisEntityResponse
             {
                 SearchedPhrase = result.SearchedPhrase!,
                 EntityId = result.EntityId,
-                Collections = result.Collections!
+                Collections = result.Collections!,
+                WorkspaceTokenIsPublic = result.WorkspaceTokenIsPublic
             },
             ct);
     }

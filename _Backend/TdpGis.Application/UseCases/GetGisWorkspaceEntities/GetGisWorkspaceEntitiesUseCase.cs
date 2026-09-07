@@ -13,19 +13,19 @@ public sealed class GetGisWorkspaceEntitiesUseCase(IGisConfigurationService conf
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var accessFailure = await WorkspaceAccessGuard.ValidateAsync(
+        var access = await WorkspaceAccessGuard.ValidateAsync(
             configurationService,
             query.WorkspaceId,
             query.WorkspaceAccessToken,
             cancellationToken);
 
-        if (accessFailure is { } kind)
-            return GetGisWorkspaceEntitiesResult.Failure(kind);
+        if (!access.IsValid)
+            return GetGisWorkspaceEntitiesResult.Failure(access.FailureKind!.Value);
 
         var entities = await configurationService.GetGisConnectionDtosByWorkspaceIdAsync(
             query.WorkspaceId,
             cancellationToken);
 
-        return GetGisWorkspaceEntitiesResult.Success(entities);
+        return GetGisWorkspaceEntitiesResult.Success(entities, access.Token!.IsPublic);
     }
 }

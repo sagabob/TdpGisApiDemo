@@ -10,4 +10,7 @@ public sealed class SearchGisEntityResponse
     public Guid EntityId { get; init; }
 
     public required List<JsonObject> Collections { get; init; }
+
+    /// <summary>Whether the workspace access token used for this call is marked public in admin.</summary>
+    public bool WorkspaceTokenIsPublic { get; init; }
 }

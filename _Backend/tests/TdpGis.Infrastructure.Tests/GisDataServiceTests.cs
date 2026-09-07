@@ -90,6 +90,21 @@ public class GisDataServiceTests
         metadata.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task GetSearchedInstances_ShouldThrow_WhenSourceTypeUnsupported()
+    {
+        var sut = new GisDataService(
+            new GisMongoDataService(
+                Mock.Of<IMongoMetadataProvider>(MockBehavior.Strict),
+                Mock.Of<IGisMongoQueryRepository>(MockBehavior.Strict)),
+            new GisSqlDataService(Mock.Of<IGisSqlQueryRepository>(MockBehavior.Strict)));
+
+        var connection = CreateConnection((SourceType)999, "x", "t");
+        var act = async () => await sut.GetSearchedInstances(connection, "q", 5, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<NotSupportedException>();
+    }
+
     private static GisConnection CreateConnection(SourceType databaseType, string connectionString, string entity)
     {
         return new GisConnection

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using TdpGis.AdminApplication.DependencyInjection;
-using TdpGis.Endpoints.Security;
+using TdpGis.Application.Security;
 using TdpGis.Infrastructure.DependencyInjection;
 using TdpGis.Infrastructure.Persistence;
 

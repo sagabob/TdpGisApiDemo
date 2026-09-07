@@ -165,7 +165,135 @@ public class SearchGisEntityUseCaseTests
         result.Succeeded.Should().BeTrue();
         result.SearchedPhrase.Should().Be(phrase);
         result.EntityId.Should().Be(entityId);
+        result.WorkspaceTokenIsPublic.Should().BeFalse();
         result.Collections.Should().HaveCount(1);
         result.Collections![0]["placeName"]!.GetValue<string>().Should().Be("Botanic Garden");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_returns_unsupported_when_data_source_type_not_supported()
+    {
+        var workspaceId = Guid.NewGuid();
+        var entityId = Guid.NewGuid();
+        const string token = "ok";
+
+        var entity = new GisConnection
+        {
+            Id = entityId,
+            Name = "Places",
+            Description = "",
+            GeometryType = GeometryType.Point,
+            QueryField = "name",
+            PropertyMappings = [],
+            Entity = "places",
+            EntityLabel = "Places",
+            DataSourceId = Guid.NewGuid(),
+            DataSource = new DataSourceSetting
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test source",
+                ConnectionString = "x",
+                DatabaseType = (SourceType)999
+            }
+        };
+
+        var configuration = new Mock<IGisConfigurationService>(MockBehavior.Strict);
+        configuration
+            .Setup(c => c.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GisWorkspaceAccessToken
+            {
+                Id = Guid.NewGuid(),
+                GisWorkspaceId = workspaceId,
+                Name = "t",
+                AccessToken = token,
+                ExpiredDateTime = DateTime.UtcNow.AddHours(1),
+                IsActive = true,
+                IsPublic = true,
+                GisWorkspace = new GisWorkspace { Id = workspaceId, Name = "ws" }
+            });
+        configuration
+            .Setup(c => c.GetGisConnectionForQueryAsync(workspaceId, entityId))
+            .ReturnsAsync(entity);
+
+        var sut = new SearchGisEntityUseCase(configuration.Object, Mock.Of<IGisDataService>(MockBehavior.Strict));
+
+        var result = await sut.ExecuteAsync(
+            new SearchGisEntityQuery
+            {
+                WorkspaceId = workspaceId,
+                EntityId = entityId,
+                SearchedPhrase = "park",
+                WorkspaceAccessToken = token
+            },
+            TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.FailureKind.Should().Be(GisQueryFailureKind.UnsupportedDataSourceType);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_returns_query_failed_when_data_service_throws()
+    {
+        var workspaceId = Guid.NewGuid();
+        var entityId = Guid.NewGuid();
+        const string token = "ok";
+
+        var entity = new GisConnection
+        {
+            Id = entityId,
+            Name = "Places",
+            Description = "",
+            GeometryType = GeometryType.Point,
+            QueryField = "name",
+            PropertyMappings = [],
+            Entity = "places",
+            EntityLabel = "Places",
+            DataSourceId = Guid.NewGuid(),
+            DataSource = new DataSourceSetting
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test source",
+                ConnectionString = "mongodb://localhost",
+                DatabaseType = SourceType.Mongodb
+            }
+        };
+
+        var configuration = new Mock<IGisConfigurationService>(MockBehavior.Strict);
+        configuration
+            .Setup(c => c.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GisWorkspaceAccessToken
+            {
+                Id = Guid.NewGuid(),
+                GisWorkspaceId = workspaceId,
+                Name = "t",
+                AccessToken = token,
+                ExpiredDateTime = DateTime.UtcNow.AddHours(1),
+                IsActive = true,
+                IsPublic = false,
+                GisWorkspace = new GisWorkspace { Id = workspaceId, Name = "ws" }
+            });
+        configuration
+            .Setup(c => c.GetGisConnectionForQueryAsync(workspaceId, entityId))
+            .ReturnsAsync(entity);
+
+        var data = new Mock<IGisDataService>(MockBehavior.Strict);
+        data.Setup(d => d.GetSearchedInstances(entity, "park", 10, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        var sut = new SearchGisEntityUseCase(configuration.Object, data.Object);
+
+        var result = await sut.ExecuteAsync(
+            new SearchGisEntityQuery
+            {
+                WorkspaceId = workspaceId,
+                EntityId = entityId,
+                SearchedPhrase = "park",
+                WorkspaceAccessToken = token,
+                MaxResults = 10
+            },
+            TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.FailureKind.Should().Be(GisQueryFailureKind.DataSourceQueryFailed);
     }
 }

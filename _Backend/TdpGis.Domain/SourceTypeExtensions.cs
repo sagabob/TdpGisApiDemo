@@ -17,4 +17,9 @@ public static class SourceTypeExtensions
     {
         return type is SourceType.Postgres or SourceType.SqlServer;
     }
+
+    public static bool IsSupportedForGisQuery(this SourceType type)
+    {
+        return type is SourceType.Mongodb or SourceType.Postgres or SourceType.SqlServer;
+    }
 }

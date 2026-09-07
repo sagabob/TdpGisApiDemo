@@ -13,6 +13,8 @@ public static class GisQueryHttp
             GisQueryFailureKind.MissingWorkspaceAccessToken => StatusCodes.Status400BadRequest,
             GisQueryFailureKind.InvalidWorkspaceAccessToken => StatusCodes.Status401Unauthorized,
             GisQueryFailureKind.EntityNotFound => StatusCodes.Status404NotFound,
+            GisQueryFailureKind.UnsupportedDataSourceType => StatusCodes.Status422UnprocessableEntity,
+            GisQueryFailureKind.DataSourceQueryFailed => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest
         };
     }

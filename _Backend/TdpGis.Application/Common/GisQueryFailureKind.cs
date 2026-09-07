@@ -6,7 +6,9 @@ public enum GisQueryFailureKind
     InvalidWorkspaceId,
     MissingWorkspaceAccessToken,
     InvalidWorkspaceAccessToken,
-    EntityNotFound
+    EntityNotFound,
+    UnsupportedDataSourceType,
+    DataSourceQueryFailed
 }
 
 public static class GisQueryFailureMessages
@@ -25,6 +27,10 @@ public static class GisQueryFailureMessages
                 "Invalid workspace, access token, or token is inactive or expired.",
             GisQueryFailureKind.EntityNotFound =>
                 "Requested entity is not in the provided workspace.",
+            GisQueryFailureKind.UnsupportedDataSourceType =>
+                "The entity's data source type is not supported for GIS queries.",
+            GisQueryFailureKind.DataSourceQueryFailed =>
+                "The GIS data source query failed.",
             _ => "Request failed."
         };
     }

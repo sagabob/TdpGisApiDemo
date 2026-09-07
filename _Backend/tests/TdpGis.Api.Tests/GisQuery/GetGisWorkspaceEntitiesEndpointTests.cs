@@ -110,6 +110,7 @@ public class GetGisWorkspaceEntitiesEndpointTests
         body.Should().NotBeNull();
         body.Should().HaveCount(1);
         body![0].Name.Should().Be("Places");
+        response.Headers.GetValues("X-TdpGis-Workspace-Token-Public").Should().ContainSingle("false");
 
         repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
             Times.Once);

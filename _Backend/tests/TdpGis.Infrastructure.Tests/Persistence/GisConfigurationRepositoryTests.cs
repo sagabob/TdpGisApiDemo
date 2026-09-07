@@ -515,8 +515,10 @@ public class GisConfigurationRepositoryTests
         await using var fixture = await SqliteDbContextFactory.CreateAsync();
         var sut = new GisConfigurationRepository(fixture.DbContext);
 
-        var a = await sut.CreateMongoDataSourceAsync("Host A", "mongodb://host-a/db", TestContext.Current.CancellationToken);
-        var b = await sut.CreateMongoDataSourceAsync("Host B", "mongodb://host-b/db", TestContext.Current.CancellationToken);
+        var a = await sut.CreateMongoDataSourceAsync("Host A", "mongodb://host-a/db",
+            TestContext.Current.CancellationToken);
+        var b = await sut.CreateMongoDataSourceAsync("Host B", "mongodb://host-b/db",
+            TestContext.Current.CancellationToken);
 
         a.Id.Should().NotBe(b.Id);
         a.Name.Should().Be("Host A");

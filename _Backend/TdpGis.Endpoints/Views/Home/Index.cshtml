@@ -159,9 +159,9 @@ else
                             ? c.GisWorkspaceId.Value.ToString()
                             : "—";
                     var dsType = c.DataSource is not null
-                        ? (string.IsNullOrWhiteSpace(c.DataSource.Name)
+                        ? string.IsNullOrWhiteSpace(c.DataSource.Name)
                             ? c.DataSource.DatabaseType.ToDisplayName()
-                            : $"{c.DataSource.Name} ({c.DataSource.DatabaseType.ToDisplayName()})")
+                            : $"{c.DataSource.Name} ({c.DataSource.DatabaseType.ToDisplayName()})"
                         : "—";
                     <tr>
                         <td class="text-nowrap font-monospace small">@c.Id</td>

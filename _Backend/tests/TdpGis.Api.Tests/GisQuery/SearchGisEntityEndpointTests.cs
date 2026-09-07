@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
+using TdpGis.Api.GisQuery.Helpers;
 using TdpGis.Api.GisQuery.Messages;
 using TdpGis.Api.Tests.Support;
 using TdpGis.Application.Abstractions;
@@ -165,6 +166,9 @@ public class SearchGisEntityEndpointTests
         body.EntityId.Should().Be(entityId);
         body.Collections.Should().HaveCount(1);
         body.Collections[0]["placeName"]!.GetValue<string>().Should().Be("Botanic Garden");
+        body.WorkspaceTokenIsPublic.Should().BeFalse();
+        response.Headers.GetValues(GisQueryEndpointExtensions.WorkspaceTokenPublicHeader).Should()
+            .ContainSingle("false");
 
         repository.Verify(r => r.GetValidWorkspaceAccessTokenAsync(workspaceId, token, It.IsAny<CancellationToken>()),
             Times.Once);

@@ -19,7 +19,7 @@ public sealed class GetGisWorkspaceEntitiesEndpoint(IGetGisWorkspaceEntitiesUseC
         {
             s.Summary = "Returns GIS entity definitions for the workspace when tokens are valid.";
             s.Description =
-                $"Path: `workspaceId`. Send `Authorization: Bearer` (Microsoft Entra access token) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token).";
+                $"Path: `workspaceId`. Send `Authorization: Bearer` (Microsoft Entra access token) and `{GisWorkspaceAccess.AccessTokenHeader}` (workspace access token). Response header `{GisQueryEndpointExtensions.WorkspaceTokenPublicHeader}` reflects the token's IsPublic flag.";
         });
     }
 
@@ -35,13 +35,11 @@ public sealed class GetGisWorkspaceEntitiesEndpoint(IGetGisWorkspaceEntitiesUseC
 
         if (!result.Succeeded)
         {
-            await HttpContext.Response.SendAsync(
-                new ApiMessageResponse { Message = result.ErrorMessage! },
-                GisQueryHttp.StatusCode(result.FailureKind!.Value),
-                cancellation: ct);
+            await HttpContext.SendGisQueryFailureAsync(result.ErrorMessage!, result.FailureKind!.Value, ct);
             return;
         }
 
+        HttpContext.SetWorkspaceTokenPublicHeader(result.WorkspaceTokenIsPublic);
         await Send.OkAsync(result.Entities!, ct);
     }
 }

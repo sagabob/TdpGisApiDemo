@@ -9,7 +9,7 @@ public sealed class SearchGisEntityQuery
     public required Guid EntityId { get; init; }
     public required string SearchedPhrase { get; init; }
     public required string? WorkspaceAccessToken { get; init; }
-    public int MaxResults { get; init; } = 10;
+    public int MaxResults { get; init; } = SearchGisEntityLimits.DefaultMaxResults;
 }
 
 public sealed class SearchGisEntityResult
@@ -20,18 +20,21 @@ public sealed class SearchGisEntityResult
     public string? SearchedPhrase { get; private init; }
     public Guid EntityId { get; private init; }
     public List<JsonObject>? Collections { get; private init; }
+    public bool WorkspaceTokenIsPublic { get; private init; }
 
     public static SearchGisEntityResult Success(
         string searchedPhrase,
         Guid entityId,
-        List<JsonObject> collections)
+        List<JsonObject> collections,
+        bool workspaceTokenIsPublic)
     {
         return new SearchGisEntityResult
         {
             Succeeded = true,
             SearchedPhrase = searchedPhrase,
             EntityId = entityId,
-            Collections = collections
+            Collections = collections,
+            WorkspaceTokenIsPublic = workspaceTokenIsPublic
         };
     }
 
