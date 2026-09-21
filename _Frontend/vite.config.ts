@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => {
     env.PRIVATE_WORKSPACE_ACCESS_TOKEN || env.WORKSPACE_ACCESS_TOKEN_PRIVATE || ''
   const restApiBearerToken =
     (env.REST_API_BEARER_TOKEN || env.PUBLIC_API_BEARER_TOKEN)?.trim() ?? ''
+  const apimSubscriptionKey = env.GIS_PRODUCT_SUBSCRIPTION_KEY?.trim() ?? ''
 
   /** Match `resolveGisUpstreamBearer`: GIS client-credentials cookie first, then user OAuth cookie. */
   function decodeCookie(name: string, cookieHeader: string | undefined): string {
@@ -50,6 +51,23 @@ export default defineConfig(({ mode }) => {
     return decodeCookie('gis_api_access_token', cookieHeader) || decodeCookie('auth_access_token', cookieHeader)
   }
 
+  function applyUpstreamAuthHeaders(
+    proxyReq: { setHeader: (name: string, value: string) => void },
+    cookieHeader: string | undefined,
+    workspaceToken: string,
+  ) {
+    if (workspaceToken) {
+      proxyReq.setHeader('X-Access-Token', workspaceToken)
+    }
+    const bearer = entraBearerFromRequestCookie(cookieHeader) || restApiBearerToken
+    if (bearer) {
+      proxyReq.setHeader('Authorization', `Bearer ${bearer}`)
+    }
+    if (apimSubscriptionKey) {
+      proxyReq.setHeader('Ocp-Apim-Subscription-Key', apimSubscriptionKey)
+    }
+  }
+
   const proxy: Record<string, string | ProxyOptions> = {}
 
   // Register `/api/gis/workspace-entities` before `/api/gis` so the REST proxy wins over the GIS catch-all.
@@ -63,13 +81,7 @@ export default defineConfig(({ mode }) => {
           : '/api/gis-workspace-entities',
       configure(proxyServer) {
         proxyServer.on('proxyReq', (proxyReq, req) => {
-          if (publicWorkspaceToken) {
-            proxyReq.setHeader('X-Access-Token', publicWorkspaceToken)
-          }
-          const bearer = entraBearerFromRequestCookie(req.headers.cookie) || restApiBearerToken
-          if (bearer) {
-            proxyReq.setHeader('Authorization', `Bearer ${bearer}`)
-          }
+          applyUpstreamAuthHeaders(proxyReq, req.headers.cookie, publicWorkspaceToken)
         })
       },
     }
@@ -97,13 +109,7 @@ export default defineConfig(({ mode }) => {
             privateWorkspaceId && wsParam === privateWorkspaceId
               ? privateWorkspaceToken
               : publicWorkspaceToken
-          if (token) {
-            proxyReq.setHeader('X-Access-Token', token)
-          }
-          const bearer = entraBearerFromRequestCookie(req.headers.cookie) || restApiBearerToken
-          if (bearer) {
-            proxyReq.setHeader('Authorization', `Bearer ${bearer}`)
-          }
+          applyUpstreamAuthHeaders(proxyReq, req.headers.cookie, token)
         })
       },
     }

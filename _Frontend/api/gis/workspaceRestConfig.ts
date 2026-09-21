@@ -119,8 +119,19 @@ export function resolveGisUpstreamBearer(req?: VercelRequest): string | undefine
   return trimEnv('REST_API_BEARER_TOKEN') || trimEnv('PUBLIC_API_BEARER_TOKEN') || undefined;
 }
 
+/** Azure APIM product subscription header (value from `GIS_PRODUCT_SUBSCRIPTION_KEY`). */
+export const APIM_SUBSCRIPTION_HEADER = 'Ocp-Apim-Subscription-Key';
+
+/** Server-only APIM product key — never expose to the browser. */
+export function getApimSubscriptionKey(): string {
+  return trimEnv('GIS_PRODUCT_SUBSCRIPTION_KEY');
+}
+
 /**
- * Headers for upstream TdpGis.Api GIS calls: always `X-Access-Token` (workspace) and `Authorization: Bearer`.
+ * Headers for upstream TdpGis.Api GIS calls (via APIM when configured):
+ * - `X-Access-Token` (workspace)
+ * - `Authorization: Bearer` (Entra)
+ * - `Ocp-Apim-Subscription-Key` when `GIS_PRODUCT_SUBSCRIPTION_KEY` is set
  *
  * - **Bearer:** `gis_api_access_token` (preferred), else user `auth_access_token`, else env — see `resolveGisUpstreamBearer`.
  * - **Private workspace merge** (server): still gated by user `auth_access_token` via `isRequestAuthenticated`.
@@ -137,6 +148,10 @@ export function workspaceUpstreamHeaders(
   const bearer = explicitBearer || resolveGisUpstreamBearer(req);
   if (bearer) {
     headers.Authorization = `Bearer ${bearer}`;
+  }
+  const apimKey = getApimSubscriptionKey();
+  if (apimKey) {
+    headers[APIM_SUBSCRIPTION_HEADER] = apimKey;
   }
   return headers;
 }

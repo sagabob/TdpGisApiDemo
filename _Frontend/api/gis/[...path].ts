@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyIncomingRequest } from '../utils/verifyVercelRequest.js';
 import { ensureGetOrHead, proxyUpstream } from '../utils/proxyUtils.js';
+import { APIM_SUBSCRIPTION_HEADER, getApimSubscriptionKey } from './workspaceRestConfig.js';
 
 /**
  * Optional legacy proxy: GET /api/gis/* → `{GIS_API_BASE_URL}/*` (Vercel env only).
@@ -49,6 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const serverToken = process.env.GIS_API_ACCESS_TOKEN?.trim();
   if (serverToken) {
     forwardHeaders['X-Access-Token'] = serverToken;
+  }
+  const apimKey = getApimSubscriptionKey();
+  if (apimKey) {
+    forwardHeaders[APIM_SUBSCRIPTION_HEADER] = apimKey;
   }
 
   return proxyUpstream(req, res, {
