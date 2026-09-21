@@ -28,9 +28,9 @@ function MicrosoftIcon({ className }: { className?: string }) {
  * Use `vercel dev` or deployed app so `/api/auth/*` exists.
  */
 export function AuthLoginButton() {
-  const session = useAuthSession();
+  const { status, email } = useAuthSession();
 
-  if (session === 'loading') {
+  if (status === 'loading') {
     return (
       <div
         className={`${btnClassName} min-w-37 cursor-default border-slate-200 bg-slate-100 text-transparent shadow-sm animate-pulse`}
@@ -42,16 +42,26 @@ export function AuthLoginButton() {
     );
   }
 
-  if (session === 'signedIn') {
+  if (status === 'signedIn') {
     return (
-      <a
-        href="/api/auth/logout"
-        className={btnClassName}
-        aria-label="Sign out from Microsoft"
+      <div
+        className={`${btnClassName} max-w-[min(22rem,calc(100vw-6rem))] gap-2.5 px-3`}
+        role="group"
+        aria-label={email ? `Signed in as ${email}` : 'Signed in'}
       >
         <MicrosoftIcon className="shrink-0" />
-        Sign out
-      </a>
+        {email ? (
+          <span className="min-w-0 truncate text-sm font-medium text-slate-700" title={email}>
+            {email}
+          </span>
+        ) : null}
+        <a
+          href="/api/auth/logout"
+          className="shrink-0 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
+        >
+          Sign out
+        </a>
+      </div>
     );
   }
 

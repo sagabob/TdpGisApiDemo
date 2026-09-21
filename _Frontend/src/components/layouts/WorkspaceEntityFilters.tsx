@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import SearchContext from '@/contexts/SearchContext';
+import { pinColorForSourceEntityId } from '@/lib/entityPinColor';
 
 /** Width is reserved by the parent in `SearchBar`; children use `w-full`. */
 
@@ -155,6 +156,7 @@ export function WorkspaceEntityFilters() {
                 const checked = selectedEntityIds.includes(id);
                 const isPrivate = ent.isPrivate === true;
                 const label = ent.entityLabel || ent.name;
+                const color = pinColorForSourceEntityId(id);
                 return (
                   <li key={id} className="flex items-start gap-2">
                     <input
@@ -168,6 +170,12 @@ export function WorkspaceEntityFilters() {
                       htmlFor={`entity-${id}`}
                       className="flex min-w-0 cursor-pointer items-start gap-1.5 text-left text-sm leading-snug text-slate-800"
                     >
+                      <span
+                        className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+                        style={{ backgroundColor: color }}
+                        title="Map pin color"
+                        aria-hidden
+                      />
                       <span className="min-w-0">{label}</span>
                       {isPrivate ? (
                         <span

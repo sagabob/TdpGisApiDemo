@@ -24,6 +24,7 @@ const DEFAULT_SCOPE = 'openid profile email offline_access';
 /** HTTP-only session cookies set by `api/auth/callback.ts` and cleared by `api/auth/logout.ts`. */
 export const AUTH_ACCESS_TOKEN_COOKIE = 'auth_access_token';
 export const AUTH_REFRESH_TOKEN_COOKIE = 'auth_refresh_token';
+export const AUTH_USER_EMAIL_COOKIE = 'auth_user_email';
 export const OAUTH_STATE_COOKIE = 'oauth_state';
 
 /** HTTP-only cookie set by `api/security/enable-gis-api.ts` — client-credentials token for TdpGis.Api (anonymous). */
@@ -171,6 +172,46 @@ export function getEntraAccessTokenFromRequest(req: VercelRequest): string | und
 export function getGisApiAccessTokenFromRequest(req: VercelRequest): string | undefined {
   const t = parseCookies(req)[GIS_API_ACCESS_TOKEN_COOKIE]?.trim();
   return t || undefined;
+}
+
+/** Decode JWT payload without verifying signature (token already issued by Entra to this BFF). */
+export function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const json = Buffer.from(padded, 'base64').toString('utf8');
+    const payload = JSON.parse(json) as unknown;
+    return payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Prefer email / UPN-style claims from an Entra id_token or access_token payload. */
+export function emailFromJwtClaims(claims: Record<string, unknown> | null): string | undefined {
+  if (!claims) return undefined;
+  for (const key of ['email', 'preferred_username', 'upn', 'unique_name'] as const) {
+    const v = claims[key];
+    if (typeof v === 'string' && v.includes('@')) return v.trim();
+  }
+  return undefined;
+}
+
+export function emailFromEntraTokens(accessToken?: string, idToken?: string): string | undefined {
+  return (
+    emailFromJwtClaims(idToken ? decodeJwtPayload(idToken) : null) ||
+    emailFromJwtClaims(accessToken ? decodeJwtPayload(accessToken) : null)
+  );
+}
+
+export function getAuthUserEmailFromRequest(req: VercelRequest): string | undefined {
+  const cookies = parseCookies(req);
+  const fromCookie = cookies[AUTH_USER_EMAIL_COOKIE]?.trim();
+  if (fromCookie) return fromCookie;
+  const access = cookies[AUTH_ACCESS_TOKEN_COOKIE]?.trim();
+  return access ? emailFromEntraTokens(access) : undefined;
 }
 
 /**

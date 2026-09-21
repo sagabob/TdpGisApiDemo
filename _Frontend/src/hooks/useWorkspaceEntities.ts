@@ -29,7 +29,7 @@ function getErrorMessage(err: unknown): string {
 const authRedirectOnFirstVisit = import.meta.env.VITE_AUTH_REDIRECT_ON_LOAD === 'true';
 
 export function useWorkspaceEntities() {
-  const session = useAuthSession();
+  const { status: session } = useAuthSession();
 
   useEffect(() => {
     if (!authRedirectOnFirstVisit || session !== 'signedOut') return;

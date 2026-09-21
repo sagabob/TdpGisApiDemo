@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   AUTH_ACCESS_TOKEN_COOKIE,
   AUTH_REFRESH_TOKEN_COOKIE,
+  AUTH_USER_EMAIL_COOKIE,
   OAUTH_STATE_COOKIE,
   type EntraTokenResponse,
   ENTRA_TOKEN_REQUEST_TIMEOUT_MS,
@@ -9,6 +10,7 @@ import {
   authCookieOpts,
   authCookieSecure,
   buildSetCookie,
+  emailFromEntraTokens,
   entraTokenUrl,
   getEntraOAuthConfig,
   parseCookies,
@@ -136,6 +138,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         json.refresh_token,
         authCookieOpts(secure, 60 * 60 * 24 * 90),
       ),
+    );
+  }
+
+  const email = emailFromEntraTokens(json.access_token, json.id_token);
+  if (email) {
+    res.appendHeader(
+      'Set-Cookie',
+      buildSetCookie(AUTH_USER_EMAIL_COOKIE, email, authCookieOpts(secure, accessMaxAge)),
     );
   }
 
